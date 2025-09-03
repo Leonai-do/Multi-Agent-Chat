@@ -38,9 +38,32 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
   // State for managing the edit modal visibility for user messages
   const [isEditing, setIsEditing] = useState(false);
 
-  /** Handles copying the raw message text to the clipboard. */
+  const messageText = message?.parts?.[0]?.text ?? '';
+
+  /** Handles copying the raw message text to the clipboard with a safe fallback. */
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.parts[0].text);
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(messageText).catch(() => {
+        // Fallback on failure
+        const ta = document.createElement('textarea');
+        ta.value = messageText;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch {}
+        document.body.removeChild(ta);
+      });
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = messageText;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch {}
+      document.body.removeChild(ta);
+    }
   };
 
   /** Handles saving an edited prompt without resending. */
@@ -79,10 +102,10 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
                     },
                 }}
                 >
-                {message.parts[0].text}
+                {messageText}
                 </ReactMarkdown>
             ) : (
-                <pre className="message-bubble__raw-text"><code>{message.parts[0].text}</code></pre>
+                <pre className="message-bubble__raw-text"><code>{messageText}</code></pre>
             )}
 
             {/* Render sources if they exist */}
@@ -135,7 +158,7 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
         <EditPromptModal
           isOpen={isEditing}
           onClose={() => setIsEditing(false)}
-          initialText={message.parts[0].text}
+          initialText={messageText}
           onSave={handleSave}
           onSaveAndResend={handleSaveAndResend}
         />
