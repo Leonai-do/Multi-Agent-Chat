@@ -27,3 +27,24 @@ export function exportLogs(filename?: string) {
   setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
 }
 
+/** Send logs to dev server to persist in logs/<category>/ as NDJSON. */
+export async function postLogs(category: string, entries: AppLog[]) {
+  try {
+    const body = JSON.stringify({ entries });
+    if (navigator.sendBeacon) {
+      const blob = new Blob([body], { type: 'application/json' });
+      navigator.sendBeacon(`/api/logs?category=${encodeURIComponent(category)}`, blob);
+      return;
+    }
+    await fetch(`/api/logs?category=${encodeURIComponent(category)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+    });
+  } catch {}
+}
+
+/** Convenience: log and send to server under a category. */
+export function logEvent(category: string, level: LogLevel, message: string, data?: any) {
+  addLog(level, message, data);
+  postLogs(category, [{ ts: new Date().toISOString(), level, message, data }]).catch(() => {});
+}
+

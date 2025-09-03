@@ -7,6 +7,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './src/components/App';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { hookConsoleAndNetwork } from './src/state/consoleCapture';
 
 // Find the root DOM element
 const rootElement = document.getElementById('root');
@@ -15,6 +16,9 @@ if (!rootElement) {
 }
 
 // Create a React root and render the App component
+// Hook console and network logging early
+try { hookConsoleAndNetwork(); } catch {}
+
 const root = createRoot(rootElement);
 root.render(
   <ErrorBoundary>
