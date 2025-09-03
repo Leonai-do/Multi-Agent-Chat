@@ -7,6 +7,7 @@ import type { Chat, LiveAgentState } from '../types';
 import MessageItem from './MessageItem';
 import LiveAgentWorkspace from './LiveAgentWorkspace';
 import ThemeSwitcher from './ThemeSwitcher';
+import { APP_TITLE, INPUT_PLACEHOLDER } from '../config';
 
 /** Props for the ChatView component. */
 interface ChatViewProps {
@@ -76,7 +77,7 @@ const ChatView: FC<ChatViewProps> = ({
               <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
             </svg>
           </button>
-          <h1 className="chat-view__title">Multi-Agent Gemini Chat</h1>
+          <h1 className="chat-view__title">{APP_TITLE}</h1>
         </div>
 
         <div className="chat-view__header-actions">
@@ -162,7 +163,7 @@ const ChatView: FC<ChatViewProps> = ({
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask anything..."
+          placeholder={INPUT_PLACEHOLDER}
           disabled={isLoading}
           aria-label="Type your message"
         />
@@ -182,4 +183,3 @@ const ChatView: FC<ChatViewProps> = ({
 };
 
 export default ChatView;
-

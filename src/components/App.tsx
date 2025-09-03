@@ -11,6 +11,7 @@ import SettingsModal from './SettingsModal';
 import ChatView from './ChatView';
 import { MODEL_NAME, INITIAL_SYSTEM_INSTRUCTION, REFINEMENT_SYSTEM_INSTRUCTION, SYNTHESIZER_SYSTEM_INSTRUCTION } from '../constants';
 import type { Chat, Message, LiveAgentState, CollaborationTrace, Source } from '../types';
+import { LS_CHATS_KEY, LS_TAVILY_KEY, getGeminiApiKey } from '../config';
 
 /**
  * The main App component.
@@ -49,8 +50,8 @@ const App: FC = () => {
 
   // Effect to initialize the Gemini API client and load data from localStorage
   useEffect(() => {
-    // It's assumed API_KEY is set in the environment for Gemini.
-    const apiKey = (globalThis as any)?.process?.env?.API_KEY || '';
+    // Resolve Gemini API key from env
+    const apiKey = getGeminiApiKey() || '';
     if (apiKey) {
       aiRef.current = new GoogleGenAI({ apiKey });
     } else {
@@ -59,10 +60,10 @@ const App: FC = () => {
     
     // Load chats and Tavily API key from local storage on initial render
     try {
-      const savedChats = localStorage.getItem('multi-agent-chats');
+      const savedChats = localStorage.getItem(LS_CHATS_KEY);
       if (savedChats) setChats(JSON.parse(savedChats));
       
-      const savedTavilyKey = localStorage.getItem('tavily-api-key');
+      const savedTavilyKey = localStorage.getItem(LS_TAVILY_KEY);
       if (savedTavilyKey) setTavilyApiKey(savedTavilyKey);
 
     } catch (error) {
@@ -73,7 +74,7 @@ const App: FC = () => {
   // Effect to save chats to localStorage whenever they change
   useEffect(() => {
     try {
-      localStorage.setItem('multi-agent-chats', JSON.stringify(chats));
+      localStorage.setItem(LS_CHATS_KEY, JSON.stringify(chats));
     } catch (error) {
       console.error("Failed to save chats to localStorage", error);
     }
@@ -85,7 +86,7 @@ const App: FC = () => {
   const handleSaveTavilyApiKey = (key: string) => {
     setTavilyApiKey(key);
     try {
-        localStorage.setItem('tavily-api-key', key);
+        localStorage.setItem(LS_TAVILY_KEY, key);
     } catch (error) {
         console.error("Failed to save Tavily API key to localStorage", error);
     }
@@ -310,7 +311,7 @@ const App: FC = () => {
         tavilyApiKey={tavilyApiKey}
         onSaveTavilyApiKey={handleSaveTavilyApiKey}
       />
-      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+      <div className={`sidebar ${isSidebarOpen ? 'sidebar--open' : ''}`}>
         <Sidebar chats={chats} activeChatId={activeChatId} onNewChat={handleNewChat} onSelectChat={handleSelectChat} onDeleteChat={handleDeleteChat} />
       </div>
       <ChatView 
