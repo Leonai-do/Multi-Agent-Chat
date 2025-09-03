@@ -40,9 +40,9 @@ const CodeBlock: FC<CodeBlockProps> = ({ children }) => {
   };
   
   return (
-    <div className="code-block-wrapper">
+    <div className="code-block">
       <pre><code>{children}</code></pre>
-      <button onClick={handleCopy} className="copy-button" aria-label="Copy code">
+      <button onClick={handleCopy} className="code-block__copy-button" aria-label="Copy code">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
           {copied 
             ? <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/> 

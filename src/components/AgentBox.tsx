@@ -36,12 +36,12 @@ interface TraceAgentBoxProps {
  * @returns {React.ReactElement} The rendered live agent status box.
  */
 export const AgentBox: FC<AgentBoxProps> = ({ agentId, status, response }) => (
-    <div className={`agent-box agent-box-color-${agentId + 1} ${status || ''}`}>
-        <div className="agent-box-header">
+    <div className={`agent-box agent-box--color-${agentId + 1}`}>
+        <div className="agent-box__header">
             Agent {agentId + 1}
-            {status && <span className={`agent-status-indicator status-${status}`}>{status}</span>}
+            {status && <span className={`agent-box__status agent-box__status--${status}`}>{status}</span>}
         </div>
-        <div className="agent-box-content">
+        <div className="agent-box__content">
             {/* FIX: Corrected the code component rendering in ReactMarkdown. The previous implementation was calling an undefined 'code' function. */}
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ pre: ({ children }) => <>{children}</>, code: ({ children }) => <code>{children}</code> }}>
                 {response || '...'}
@@ -68,15 +68,15 @@ export const TraceAgentBox: FC<TraceAgentBoxProps> = ({ agentId, initial, refine
     const content = view === 'refined' ? (refined || '') : (initial || '');
 
     return (
-        <div className={`agent-box agent-box-color-${agentId + 1}`}>
-            <div className="agent-box-header">
+        <div className={`agent-box agent-box--color-${agentId + 1}`}>
+            <div className="agent-box__header">
                 <span>Agent {agentId + 1}</span>
-                <div className="response-toggle-group" role="group" aria-label={`Toggle Agent ${agentId + 1} response`}>
-                    <button type="button" className={`response-toggle ${view === 'initial' ? 'active' : ''}`} onClick={() => setView('initial')} disabled={!hasInitial} aria-pressed={view === 'initial'} aria-label="Show initial response">Initial</button>
-                    <button type="button" className={`response-toggle ${view === 'refined' ? 'active' : ''}`} onClick={() => setView('refined')} disabled={!hasRefined} aria-pressed={view === 'refined'} aria-label="Show refined response">Refined</button>
+                <div className="agent-box__toggle-group" role="group" aria-label={`Toggle Agent ${agentId + 1} response`}>
+                    <button type="button" className={`agent-box__toggle ${view === 'initial' ? 'agent-box__toggle--active' : ''}`} onClick={() => setView('initial')} disabled={!hasInitial} aria-pressed={view === 'initial'} aria-label="Show initial response">Initial</button>
+                    <button type="button" className={`agent-box__toggle ${view === 'refined' ? 'agent-box__toggle--active' : ''}`} onClick={() => setView('refined')} disabled={!hasRefined} aria-pressed={view === 'refined'} aria-label="Show refined response">Refined</button>
                 </div>
             </div>
-            <div className="agent-box-content">
+            <div className="agent-box__content">
                 {content ? <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ pre: ({ children }) => <>{children}</>, code: ({ children }) => <code>{children}</code> }}>{content}</ReactMarkdown> : <div className="placeholder">No response available</div>}
             </div>
         </div>

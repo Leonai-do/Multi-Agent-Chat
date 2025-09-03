@@ -55,19 +55,19 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
 
   return (
     <>
-      <div className={`message-container ${message.collaborationTrace && isTraceVisible ? 'trace-visible' : ''}`}>
-        <div className={`message-wrapper ${message.role}`}>
-            <div className="message-actions">
+      <div className={`message-item ${message.collaborationTrace && isTraceVisible ? 'message-item--trace-visible' : ''}`}>
+        <div className={`message-item__wrapper message-item__wrapper--${message.role}`}>
+            <div className="message-item__actions">
             {message.role === 'user' && (
-                <button className="message-action-button" onClick={() => setIsEditing(true)} aria-label="Edit prompt">
+                <button className="message-item__action-button" onClick={() => setIsEditing(true)} aria-label="Edit prompt">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                 </button>
             )}
-            <button className="message-action-button" onClick={handleCopy} aria-label="Copy message">
+            <button className="message-item__action-button" onClick={handleCopy} aria-label="Copy message">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-5zm0 16H8V7h11v14z"/></svg>
             </button>
             </div>
-            <div className={`message ${message.role}`} onDoubleClick={message.role === 'user' ? () => setIsEditing(true) : undefined}>
+            <div className={`message-bubble message-bubble--${message.role}`} onDoubleClick={message.role === 'user' ? () => setIsEditing(true) : undefined}>
             {viewMode === 'rendered' ? (
                 <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -82,14 +82,14 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
                 {message.parts[0].text}
                 </ReactMarkdown>
             ) : (
-                <pre className="raw-text-view"><code>{message.parts[0].text}</code></pre>
+                <pre className="message-bubble__raw-text"><code>{message.parts[0].text}</code></pre>
             )}
 
             {/* Render sources if they exist */}
             {message.sources && message.sources.length > 0 && (
-              <div className="sources-container">
-                  <h4>Sources</h4>
-                  <ol className="sources-list">
+              <div className="sources-list">
+                  <h4 className="sources-list__title">Sources</h4>
+                  <ol className="sources-list__items">
                       {message.sources.map((source, index) => (
                           <li key={index} className="source-item">
                               <a href={source.url} target="_blank" rel="noopener noreferrer" title={source.url}>
@@ -103,14 +103,14 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
             
             {/* Toolbar for model messages */}
             {message.role === 'model' && (
-                <div className="message-toolbar">
-                <button onClick={() => setViewMode(viewMode === 'rendered' ? 'raw' : 'rendered')} className="view-toggle" aria-label={`Switch to ${viewMode === 'rendered' ? 'raw' : 'rendered'} view`}>
+                <div className="message-bubble__toolbar">
+                <button onClick={() => setViewMode(viewMode === 'rendered' ? 'raw' : 'rendered')} className="message-bubble__view-toggle" aria-label={`Switch to ${viewMode === 'rendered' ? 'raw' : 'rendered'} view`}>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
                     {viewMode === 'rendered' ? 'Raw' : 'Rendered'}
                 </button>
 
                 {message.collaborationTrace && (
-                    <button onClick={() => setIsTraceVisible(!isTraceVisible)} className="collaboration-toggle-history" aria-expanded={isTraceVisible}>
+                    <button onClick={() => setIsTraceVisible(!isTraceVisible)} className="message-bubble__collaboration-toggle" aria-expanded={isTraceVisible}>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 15.5c-2.26 0-4.26-1.23-5.43-3.13.34-.39.64-.82.89-1.28.63.49 1.37.84 2.16 1.05V10.5h2v1.65c.79-.21 1.53-.56 2.16-1.05.25.46.55.89.89 1.28-1.17 1.9-3.17 3.13-5.43 3.13zM12 14c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm-7.5-1.5c-2.26 0-4.26-1.23-5.43-3.13C-.21 8.98 0 8.44 0 8c0-.44.21-.98.57-1.37C1.74 4.73 3.74 3.5 6 3.5c2.26 0 4.26 1.23 5.43 3.13-.34.39-.64.82-.89 1.28-.63-.49-1.37-.84-2.16-1.05V8.5h-2v-1.65c-.79.21-1.53.56-2.16 1.05-.25-.46-.55-.89-.89-1.28C4.76 4.73 2.76 3.5.5 3.5 2.76 3.5 4.76 4.73 5.93 6.63c.34.39.64.82.89 1.28.63-.49 1.37-.84 2.16-1.05V8.5h2v1.65c.79.21 1.53.56 2.16 1.05.25.46.55.89.89 1.28C10.24 14.27 8.24 15.5 6 15.5c-2.26 0-4.26-1.23-5.43-3.13.34-.39.64-.82.89-1.28-.63.49-1.37-.84-2.16-1.05V10.5h-2v-1.65c-.79.21-1.53-.56-2.16-1.05C1.74 6.27 3.74 7.5 6 7.5c2.26 0 4.26-1.23 5.43-3.13C11.79 4.02 12 4.56 12 5c0 .44-.21.98-.57 1.37C10.26 8.27 8.26 9.5 6 9.5s-4.26-1.23-5.43-3.13z"/></svg>
                     <span>{isTraceVisible ? 'Hide' : 'View'} Collaboration</span>
                     </button>
@@ -122,7 +122,7 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
 
         {/* The collaboration trace view, visibility controlled by state */}
         {message.collaborationTrace && (
-            <div className={`collaboration-trace-wrapper ${isTraceVisible ? 'visible' : ''}`}>
+            <div className={`collaboration-trace-wrapper ${isTraceVisible ? 'collaboration-trace-wrapper--visible' : ''}`}>
                 <div className="collaboration-trace">
                     <CollaborationTraceView trace={message.collaborationTrace} className="agent-grid" />
                 </div>

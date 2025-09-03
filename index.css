@@ -1,12 +1,12 @@
 /**
  * =============================================================================
- * GLOBAL STYLES & CSS VARIABLES
+ * GLOBAL & ROOT STYLES
  * =============================================================================
- * This section contains all global CSS styles and variables for the application.
- * It includes theme definitions (light and dark), base element styling,
- * and themed scrollbar designs.
+ * This section contains all global CSS variables, theme definitions,
+ * base element styling, and scrollbar designs.
  */
 
+/* Set a solid box-sizing model for all elements */
 *,
 *::before,
 *::after {
@@ -152,7 +152,7 @@ body {
 
 /**
  * =============================================================================
- * APP & LAYOUT
+ * APP LAYOUT
  * =============================================================================
  * Styles for the main App component wrapper and responsive sidebar layout.
  */
@@ -173,7 +173,6 @@ body {
  * =============================================================================
  * SIDEBAR
  * =============================================================================
- * Styles for the chat history sidebar.
  */
 .sidebar {
   width: 260px;
@@ -188,12 +187,14 @@ body {
   resize: horizontal;
   overflow: hidden;
 }
-.sidebar-header {
+
+.sidebar__header {
   padding: 1rem;
   border-bottom: 1px solid var(--header-border);
   flex-shrink: 0;
 }
-.new-chat-button {
+
+.sidebar__new-chat-button {
   width: 100%;
   padding: 0.75rem 1rem;
   border-radius: 8px;
@@ -209,16 +210,18 @@ body {
   justify-content: center;
   gap: 0.5rem;
 }
-.new-chat-button:hover {
+.sidebar__new-chat-button:hover {
   background-color: var(--button-hover-bg);
 }
-.chat-history-list {
+
+.sidebar__chat-history {
   flex-grow: 1;
   overflow-y: auto;
   padding: 0.5rem;
   list-style: none;
   margin: 0;
 }
+
 .chat-history-item {
   display: flex;
   align-items: center;
@@ -230,28 +233,22 @@ body {
   transition: background-color 0.2s, color 0.2s;
   gap: 0.5rem;
 }
-.chat-history-item .chat-title {
+.chat-history-item:hover {
+  background-color: var(--button-hover-bg-light);
+}
+.chat-history-item--active {
+  background-color: var(--user-message-bg);
+  color: var(--user-message-text);
+}
+
+.chat-history-item__title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex-grow: 1;
 }
-.chat-history-item:hover {
-  background-color: var(--button-hover-bg-light);
-}
-.chat-history-item.active {
-  background-color: var(--user-message-bg);
-  color: var(--user-message-text);
-}
-.chat-history-item.active .delete-chat-button {
-  color: var(--user-message-text);
-  opacity: 0.7;
-}
-.chat-history-item.active .delete-chat-button:hover {
-  opacity: 1;
-  background-color: rgba(255,255,255,0.2);
-}
-.delete-chat-button {
+
+.chat-history-item__delete-button {
   background: none;
   border: none;
   color: var(--secondary-text-color);
@@ -265,17 +262,26 @@ body {
   transition: opacity 0.2s, background-color 0.2s;
   flex-shrink: 0;
 }
-.chat-history-item:hover .delete-chat-button {
+.chat-history-item:hover .chat-history-item__delete-button {
   opacity: 1;
 }
-.delete-chat-button:hover {
+.chat-history-item__delete-button:hover {
   background-color: var(--button-secondary-hover-bg);
 }
-.delete-chat-button svg {
+.chat-history-item--active .chat-history-item__delete-button {
+  color: var(--user-message-text);
+  opacity: 0.7;
+}
+.chat-history-item--active .chat-history-item__delete-button:hover {
+  opacity: 1;
+  background-color: rgba(255,255,255,0.2);
+}
+.chat-history-item__delete-button svg {
   width: 16px;
   height: 16px;
 }
 
+/* --- Sidebar Responsive --- */
 @media (max-width: 768px) {
   .sidebar {
     position: absolute;
@@ -288,18 +294,18 @@ body {
     box-shadow: 4px 0 15px rgba(0,0,0,0.1);
     resize: none;
   }
-  .sidebar.open {
+  .sidebar--open {
     margin-left: 0; /* Slide in */
   }
 }
+
 
 /**
  * =============================================================================
  * CHAT VIEW
  * =============================================================================
- * Styles for the main chat container, header, message list, and input area.
  */
-.chat-container {
+.chat-view {
   flex-grow: 1;
   background-color: var(--app-background);
   display: flex;
@@ -309,7 +315,7 @@ body {
 }
 
 /* --- Header --- */
-.header {
+.chat-view__header {
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--header-border);
   background-color: var(--app-background);
@@ -318,18 +324,23 @@ body {
   align-items: center;
   flex-shrink: 0;
 }
-.header h1 {
+.chat-view__title {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 500;
   color: var(--text-color);
 }
-.header-actions {
+.chat-view__header-actions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
-.menu-button, .settings-button {
+.chat-view__menu-button {
+  display: none; /* Mobile only */
+}
+
+/* --- Header Buttons (Menu, Settings, Internet) --- */
+.icon-button {
   background: none;
   border: none;
   cursor: pointer;
@@ -341,18 +352,13 @@ body {
   transition: background-color 0.2s;
   color: var(--secondary-text-color);
 }
-.menu-button {
-  display: none;
-}
-.settings-button:hover, .menu-button:hover {
+.icon-button:hover {
   background-color: var(--button-hover-bg-light);
 }
-.settings-button svg, .menu-button svg {
+.icon-button svg {
   width: 24px;
   height: 24px;
 }
-
-/* Internet Toggle Button */
 .internet-toggle {
   background-color: var(--button-secondary-bg);
   border: 1px solid var(--button-secondary-border);
@@ -375,23 +381,24 @@ body {
   height: 18px;
   transition: color 0.3s ease;
 }
-.internet-toggle.enabled {
+.internet-toggle--enabled {
   background-color: var(--button-bg);
   color: var(--button-text);
   border-color: var(--button-bg);
 }
-.internet-toggle.enabled:hover {
+.internet-toggle--enabled:hover {
   background-color: var(--button-hover-bg);
 }
 
+/* --- Chat View Responsive --- */
 @media (max-width: 768px) {
-  .menu-button {
+  .chat-view__menu-button {
     display: flex;
   }
-  .header h1 {
+  .chat-view__title {
     font-size: 1.1rem;
   }
-  .header-actions {
+  .chat-view__header-actions {
     gap: 0;
   }
   .internet-toggle span {
@@ -413,11 +420,11 @@ body {
   color: var(--secondary-text-color);
   padding: 1.5rem;
 }
-.welcome-screen h2 {
+.welcome-screen__title {
   font-size: 1.5rem;
   font-weight: 500;
 }
-.welcome-screen p {
+.welcome-screen__subtitle {
   margin-top: 0.5rem;
 }
 
@@ -430,22 +437,21 @@ body {
   flex-direction: column;
   gap: 0.25rem;
 }
-.loading-message {
+.message-list__loading {
   text-align: center;
   color: var(--secondary-text-color);
   padding: 1rem;
   font-style: italic;
 }
 
-
 /* --- Input Area --- */
-.input-area {
+.chat-input {
   display: flex;
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--header-border);
   background-color: var(--app-background);
 }
-.input-area input {
+.chat-input__text-field {
   flex-grow: 1;
   border: 1px solid var(--input-border);
   background-color: var(--input-background);
@@ -457,11 +463,11 @@ body {
   margin-right: 0.75rem;
   transition: box-shadow 0.2s ease-in-out;
 }
-.input-area input:focus {
+.chat-input__text-field:focus {
   outline: none;
   box-shadow: 0 0 0 2px var(--input-focus-shadow);
 }
-.input-area button {
+.chat-input__submit-button {
   border: none;
   background-color: var(--button-bg);
   color: var(--button-text);
@@ -475,28 +481,28 @@ body {
   transition: background-color 0.2s ease-in-out;
   flex-shrink: 0;
 }
-.input-area button:hover:not(:disabled) {
+.chat-input__submit-button:hover:not(:disabled) {
   background-color: var(--button-hover-bg);
 }
-.input-area button:disabled {
+.chat-input__submit-button:disabled {
   background-color: var(--button-disabled-bg);
   cursor: not-allowed;
 }
-.input-area button svg {
+.chat-input__submit-button svg {
   width: 24px;
   height: 24px;
 }
+
 
 /**
  * =============================================================================
  * THEME SWITCHER
  * =============================================================================
- * Styles for the theme selection dropdown.
  */
 .theme-switcher {
   position: relative;
 }
-.theme-button {
+.theme-switcher__button {
   background: none;
   border: none;
   cursor: pointer;
@@ -508,14 +514,14 @@ body {
   transition: background-color 0.2s;
   color: var(--secondary-text-color);
 }
-.theme-button:hover {
+.theme-switcher__button:hover {
   background-color: var(--button-hover-bg-light);
 }
-.theme-button svg {
+.theme-switcher__button svg {
   width: 24px;
   height: 24px;
 }
-.theme-dropdown {
+.theme-switcher__dropdown {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
@@ -530,6 +536,7 @@ body {
   flex-direction: column;
   gap: 0.25rem;
 }
+
 .theme-item {
   display: flex;
   align-items: center;
@@ -548,7 +555,7 @@ body {
 .theme-item:hover {
   background-color: var(--button-hover-bg-light);
 }
-.theme-item.active {
+.theme-item--active {
   background-color: var(--user-message-bg);
   color: var(--user-message-text);
   font-weight: 500;
@@ -558,33 +565,34 @@ body {
   height: 18px;
 }
 
+
 /**
  * =============================================================================
  * MESSAGE ITEM
  * =============================================================================
- * Styles for individual chat bubbles (user and model), actions, and the
- * collaboration trace view.
  */
-.message-container {
+.message-item {
   display: flex;
   flex-direction: column;
 }
-.message-container.trace-visible {
+.message-item--trace-visible {
   width: 100%;
 }
-.message-wrapper {
+.message-item__wrapper {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0;
 }
-.message-wrapper.user {
+.message-item__wrapper--user {
   justify-content: flex-end;
 }
-.message-wrapper.model {
+.message-item__wrapper--model {
   justify-content: flex-start;
 }
-.message-wrapper .message-actions {
+
+/* --- Message Actions (Edit, Copy) --- */
+.message-item__actions {
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -592,16 +600,16 @@ body {
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
 }
-.message-wrapper:hover .message-actions,
-.message-wrapper:focus-within .message-actions {
+.message-item__wrapper:hover .message-item__actions,
+.message-item__wrapper:focus-within .message-item__actions {
   opacity: 1;
 }
-.message-wrapper.user .message { order: 2; }
-.message-wrapper.user .message-actions { order: 1; }
-.message-wrapper.model .message { order: 1; }
-.message-wrapper.model .message-actions { order: 2; }
+.message-item__wrapper--user .message-bubble { order: 2; }
+.message-item__wrapper--user .message-item__actions { order: 1; }
+.message-item__wrapper--model .message-bubble { order: 1; }
+.message-item__wrapper--model .message-item__actions { order: 2; }
 
-.message-action-button {
+.message-item__action-button {
   background-color: var(--button-hover-bg-light);
   border: 1px solid var(--border-color);
   color: var(--secondary-text-color);
@@ -614,15 +622,17 @@ body {
   border-radius: 50%;
   transition: background-color 0.2s, border-color 0.2s;
 }
-.message-action-button:hover {
+.message-item__action-button:hover {
   background-color: var(--button-secondary-hover-bg);
   border-color: var(--button-secondary-hover-border);
 }
-.message-action-button svg {
+.message-item__action-button svg {
   width: 18px;
   height: 18px;
 }
-.message {
+
+/* --- Message Bubble --- */
+.message-bubble {
   max-width: 85%;
   padding: 0.75rem 1.25rem;
   border-radius: 1.5rem;
@@ -631,13 +641,13 @@ body {
   line-height: 1.5;
   transition: background-color 0.3s, color 0.3s;
 }
-.message.user {
+.message-bubble--user {
   background-color: var(--user-message-bg);
   color: var(--user-message-text);
   border-bottom-right-radius: 0.5rem;
   cursor: pointer;
 }
-.message.model {
+.message-bubble--model {
   background-color: var(--model-message-bg);
   color: var(--model-message-text);
   border-bottom-left-radius: 0.5rem;
@@ -647,7 +657,9 @@ body {
   width: 100%;
   max-width: 100%;
 }
-.message-toolbar {
+
+/* --- Model Message Toolbar --- */
+.message-bubble__toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -655,7 +667,7 @@ body {
   border-top: 1px solid var(--border-color);
   margin-top: 0.75rem;
 }
-.view-toggle {
+.message-bubble__view-toggle {
   background: none;
   border: 1px solid var(--border-color);
   color: var(--secondary-text-color);
@@ -669,15 +681,15 @@ body {
   border-radius: 6px;
   transition: background-color 0.2s, border-color 0.2s;
 }
-.view-toggle:hover {
+.message-bubble__view-toggle:hover {
   background-color: var(--button-hover-bg-light);
   border-color: var(--secondary-text-color);
 }
-.view-toggle svg {
+.message-bubble__view-toggle svg {
   width: 14px;
   height: 14px;
 }
-.raw-text-view {
+.message-bubble__raw-text {
   background-color: var(--pre-bg);
   padding: 0.75rem;
   border-radius: 8px;
@@ -688,12 +700,11 @@ body {
   color: var(--code-text-color);
   margin: 0;
 }
-.raw-text-view code {
+.message-bubble__raw-text code {
   padding: 0;
   background: none;
 }
-
-.collaboration-toggle-history {
+.message-bubble__collaboration-toggle {
   background: none;
   border: none;
   color: var(--secondary-text-color);
@@ -708,14 +719,15 @@ body {
   border-radius: 6px;
   transition: background-color 0.2s;
 }
-.collaboration-toggle-history:hover {
+.message-bubble__collaboration-toggle:hover {
   background-color: var(--button-hover-bg-light);
 }
-.collaboration-toggle-history svg {
+.message-bubble__collaboration-toggle svg {
   width: 16px;
   height: 16px;
 }
 
+/* --- Collaboration Trace --- */
 .collaboration-trace-wrapper {
   display: grid;
   grid-template-rows: 0fr;
@@ -723,7 +735,7 @@ body {
   padding-left: 48px; /* Approx icon width + gap */
   padding-right: 48px;
 }
-.collaboration-trace-wrapper.visible {
+.collaboration-trace-wrapper--visible {
   grid-template-rows: 1fr;
 }
 .collaboration-trace {
@@ -731,19 +743,20 @@ body {
   padding-top: 1rem;
 }
 
-.sources-container {
+/* --- Sources --- */
+.sources-list {
   margin-top: 1rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--border-color);
 }
-.sources-container h4 {
+.sources-list__title {
   margin: 0 0 0.5rem 0;
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--secondary-text-color);
   text-transform: uppercase;
 }
-.sources-list {
+.sources-list__items {
   list-style-type: decimal;
   margin: 0;
   padding-left: 1.25rem;
@@ -761,8 +774,9 @@ body {
   text-decoration: underline;
 }
 
+/* --- Message Item Responsive --- */
 @media (max-width: 768px) {
-  .message-wrapper .message-actions {
+  .message-item__actions {
     opacity: 0.6; /* Make actions always somewhat visible on mobile */
   }
   .collaboration-trace-wrapper {
@@ -775,32 +789,31 @@ body {
  * =============================================================================
  * MARKDOWN & CODE BLOCKS
  * =============================================================================
- * Styles for rendered Markdown content within messages, including code blocks.
  */
-.message > div > *:first-child, .message > p:first-child { margin-top: 0; }
-.message > div > *:last-child, .message > p:last-child { margin-bottom: 0; }
-.message p { margin: 0 0 0.5rem 0; }
-.message ul, .message ol { padding-inline-start: 1.5rem; margin-block: 0.5rem; }
-.message li { margin-bottom: 0.25rem; }
-.message code { font-family: 'Fira Code', 'Courier New', Courier, monospace; background-color: var(--code-bg); color: var(--code-text-color); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
-.message.user code { background-color: rgba(255, 255, 255, 0.2); color: var(--user-message-text); }
-.message pre { background-color: var(--pre-bg); padding: 0.75rem; border-radius: 8px; overflow-x: auto; white-space: pre; }
-.message.user pre { background-color: rgba(255, 255, 255, 0.15); }
-.message pre code { background-color: transparent; padding: 0; }
-.message blockquote { border-left: 3px solid var(--border-color); padding-left: 1rem; margin: 0.5rem 0; color: var(--secondary-text-color); }
-.message.user blockquote { border-left-color: rgba(255, 255, 255, 0.5); color: inherit; }
-.message a { color: var(--button-bg); text-decoration: underline; }
-.message.user a { color: #fff; font-weight: 600; text-decoration: underline; }
+.message-bubble > div > *:first-child, .message-bubble > p:first-child { margin-top: 0; }
+.message-bubble > div > *:last-child, .message-bubble > p:last-child { margin-bottom: 0; }
+.message-bubble p { margin: 0 0 0.5rem 0; }
+.message-bubble ul, .message-bubble ol { padding-inline-start: 1.5rem; margin-block: 0.5rem; }
+.message-bubble li { margin-bottom: 0.25rem; }
+.message-bubble code { font-family: 'Fira Code', 'Courier New', Courier, monospace; background-color: var(--code-bg); color: var(--code-text-color); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+.message-bubble--user code { background-color: rgba(255, 255, 255, 0.2); color: var(--user-message-text); }
+.message-bubble pre { background-color: var(--pre-bg); padding: 0.75rem; border-radius: 8px; overflow-x: auto; white-space: pre; }
+.message-bubble--user pre { background-color: rgba(255, 255, 255, 0.15); }
+.message-bubble pre code { background-color: transparent; padding: 0; }
+.message-bubble blockquote { border-left: 3px solid var(--border-color); padding-left: 1rem; margin: 0.5rem 0; color: var(--secondary-text-color); }
+.message-bubble--user blockquote { border-left-color: rgba(255, 255, 255, 0.5); color: inherit; }
+.message-bubble a { color: var(--button-bg); text-decoration: underline; }
+.message-bubble--user a { color: #fff; font-weight: 600; text-decoration: underline; }
 
-.code-block-wrapper {
+.code-block {
   position: relative;
   margin: 0.5rem 0;
 }
-.code-block-wrapper pre {
+.code-block pre {
   margin: 0;
   padding-top: 2.5rem; /* Space for the button */
 }
-.copy-button {
+.code-block__copy-button {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
@@ -818,10 +831,10 @@ body {
   transition: background-color 0.2s ease-in-out;
   z-index: 1;
 }
-.copy-button:hover {
+.code-block__copy-button:hover {
   background-color: var(--copy-button-hover-bg);
 }
-.copy-button svg {
+.code-block__copy-button svg {
   width: 14px;
   height: 14px;
 }
@@ -830,7 +843,6 @@ body {
  * =============================================================================
  * AGENT WORKSPACE & COLLABORATION
  * =============================================================================
- * Styles for the live and historical agent collaboration views.
  */
 .agent-workspace {
   padding: 1rem;
@@ -842,19 +854,19 @@ body {
   flex-direction: column;
   gap: 1rem;
 }
-.agent-workspace-header {
+.agent-workspace__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--border-color);
 }
-.agent-workspace-title {
+.agent-workspace__title {
   font-weight: 500;
   color: var(--text-color);
   font-size: 1rem;
 }
-.collaboration-toggle {
+.agent-workspace__toggle {
   background: none;
   border: 1px solid transparent;
   color: var(--secondary-text-color);
@@ -868,26 +880,26 @@ body {
   border-radius: 6px;
   transition: background-color 0.2s, border-color 0.2s;
 }
-.collaboration-toggle:hover {
+.agent-workspace__toggle:hover {
   background-color: var(--button-hover-bg-light);
 }
-.collaboration-toggle svg {
+.agent-workspace__toggle svg {
   width: 18px;
   height: 18px;
   transition: transform 0.3s ease;
 }
-.collaboration-toggle svg.expanded {
+.agent-workspace__toggle svg.expanded {
   transform: rotate(180deg);
 }
 
-.agent-grid-container {
+.agent-grid-wrapper {
   display: grid;
   max-height: 0;
   opacity: 0;
   overflow: hidden;
   transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out;
 }
-.agent-grid-container.visible {
+.agent-grid-wrapper--visible {
   max-height: 1000px; /* Arbitrary large value */
   opacity: 1;
 }
@@ -901,6 +913,7 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
 .agent-box {
   background-color: var(--app-background);
   border: 1px solid var(--border-color);
@@ -915,12 +928,14 @@ body {
 html[data-theme='dark'] .agent-box {
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
-.agent-box-color-1 { --agent-color: var(--agent-1-color); }
-.agent-box-color-2 { --agent-color: var(--agent-2-color); }
-.agent-box-color-3 { --agent-color: var(--agent-3-color); }
-.agent-box-color-4 { --agent-color: var(--agent-4-color); }
 
-.agent-box-header {
+/* Agent Box Color Modifiers */
+.agent-box--color-1 { --agent-color: var(--agent-1-color); }
+.agent-box--color-2 { --agent-color: var(--agent-2-color); }
+.agent-box--color-3 { --agent-color: var(--agent-3-color); }
+.agent-box--color-4 { --agent-color: var(--agent-4-color); }
+
+.agent-box__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -930,15 +945,17 @@ html[data-theme='dark'] .agent-box {
   background-color: var(--agent-color);
   color: #fff;
 }
-.agent-box-color-3 .agent-box-header {
+.agent-box--color-3 .agent-box__header {
   color: #202124;
 }
-.response-toggle-group {
+
+/* --- Agent Box Toggles (Initial/Refined) --- */
+.agent-box__toggle-group {
   display: flex;
   gap: 0.25rem;
   margin-left: auto;
 }
-.response-toggle {
+.agent-box__toggle {
   appearance: none;
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -950,32 +967,34 @@ html[data-theme='dark'] .agent-box {
   border-radius: 9999px;
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
-.response-toggle:hover:not(:disabled) {
+.agent-box__toggle:hover:not(:disabled) {
   background-color: rgba(255, 255, 255, 0.3);
 }
-.response-toggle.active {
+.agent-box__toggle--active {
   background-color: #fff;
   color: var(--agent-color);
   border-color: #fff;
 }
-.response-toggle:disabled {
+.agent-box__toggle:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
-.agent-box-color-3 .response-toggle {
+.agent-box--color-3 .agent-box__toggle {
   background: rgba(0, 0, 0, 0.08);
   border-color: rgba(0, 0, 0, 0.2);
   color: #3c4043;
 }
-.agent-box-color-3 .response-toggle:hover:not(:disabled) {
+.agent-box--color-3 .agent-box__toggle:hover:not(:disabled) {
   background-color: rgba(0, 0, 0, 0.15);
 }
-.agent-box-color-3 .response-toggle.active {
+.agent-box--color-3 .agent-box__toggle--active {
   background-color: #3c4043;
   color: #fff;
   border-color: #3c4043;
 }
-.agent-status-indicator {
+
+/* --- Agent Box Status Indicator --- */
+.agent-box__status {
   font-weight: 500;
   font-size: 0.75rem;
   padding: 0.2rem 0.5rem;
@@ -984,54 +1003,35 @@ html[data-theme='dark'] .agent-box {
   background-color: rgba(255,255,255, 0.25);
   color: #fff;
 }
-.agent-box-color-3 .agent-status-indicator {
+.agent-box--color-3 .agent-box__status {
   background-color: rgba(0,0,0,0.1);
   color: #202124;
 }
+@keyframes agent-pulse { 50% { opacity: 0.6; } }
 
-/* Visual indicator dot for agent status */
-@keyframes agent-pulse {
-  50% { opacity: 0.6; }
-}
-
-.agent-status-indicator::before {
+.agent-box__status::before {
   content: "●";
   margin-right: 0.4em;
   font-size: 0.9em;
   line-height: 1;
   vertical-align: baseline;
 }
-
-/* Default 'working' state: pulsing yellow dot */
-.agent-status-indicator.status-initializing::before,
-.agent-status-indicator.status-writing::before,
-.agent-status-indicator.status-refining::before {
+.agent-box__status--initializing::before,
+.agent-box__status--writing::before,
+.agent-box__status--refining::before {
   animation: agent-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   color: var(--agent-3-color);
 }
-
-/* Override dot color for agent 3 (yellow header) when 'working' to ensure contrast */
-.agent-box-color-3 .agent-status-indicator.status-initializing::before,
-.agent-box-color-3 .agent-status-indicator.status-writing::before,
-.agent-box-color-3 .agent-status-indicator.status-refining::before {
-  color: var(--agent-2-color); /* Use red for contrast */
+.agent-box--color-3 .agent-box__status--initializing::before,
+.agent-box--color-3 .agent-box__status--writing::before,
+.agent-box--color-3 .agent-box__status--refining::before {
+  color: var(--agent-2-color); /* Use red for contrast on yellow background */
 }
+.agent-box__status--pending::before { color: var(--secondary-text-color); }
+html[data-theme='dark'] .agent-box__status--pending::before { opacity: 0.6; }
+.agent-box__status--done::before { color: var(--agent-4-color); }
 
-/* Static gray dot for 'pending' */
-.agent-status-indicator.status-pending::before {
-  color: var(--secondary-text-color);
-}
-/* For dark theme pending */
-html[data-theme='dark'] .agent-status-indicator.status-pending::before {
-    opacity: 0.6;
-}
-
-/* Static green dot for 'done' */
-.agent-status-indicator.status-done::before {
-  color: var(--agent-4-color);
-}
-
-.agent-box-content {
+.agent-box__content {
   flex-grow: 1;
   font-size: 0.9rem;
   line-height: 1.5;
@@ -1041,22 +1041,15 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
   padding: 0.75rem;
   word-break: break-word;
 }
-.agent-box-content > div > *:first-child {
-  margin-top: 0;
-}
-.agent-box-content > div > *:last-child {
-  margin-bottom: 0;
-}
-.agent-box-content .placeholder {
-    color: var(--secondary-text-color);
-}
+.agent-box__content > div > *:first-child { margin-top: 0; }
+.agent-box__content > div > *:last-child { margin-bottom: 0; }
+.agent-box__content .placeholder { color: var(--secondary-text-color); }
 
 
 /**
  * =============================================================================
  * MODALS (GENERAL & SPECIFIC)
  * =============================================================================
- * Styles for all modal dialogs, including settings and edit prompt.
  */
 .modal-overlay {
   position: fixed;
@@ -1073,7 +1066,7 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-.modal-content {
+.modal {
   background-color: var(--app-background);
   border-radius: 1rem;
   box-shadow: 0 5px 25px var(--shadow-color);
@@ -1086,19 +1079,19 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
 }
 @keyframes slideIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-.modal-header {
+.modal__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--header-border);
 }
-.modal-header h2 {
+.modal__title {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 500;
 }
-.close-button {
+.modal__close-button {
   background: none;
   border: none;
   font-size: 1.75rem;
@@ -1107,11 +1100,11 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
   color: var(--secondary-text-color);
   padding: 0.25rem 0.5rem;
 }
-.modal-body {
+.modal__body {
   padding: 1.5rem;
   overflow-y: auto;
 }
-.modal-footer {
+.modal__footer {
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -1121,11 +1114,13 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
   border-bottom-left-radius: 1rem;
   border-bottom-right-radius: 1rem;
 }
-.modal-actions {
+.modal__actions {
   display: flex;
   gap: 0.75rem;
 }
-.button-primary, .button-secondary, .button-tertiary {
+
+/* --- Modal Buttons --- */
+.button {
   border: 1px solid transparent;
   padding: 0.5rem 1rem;
   border-radius: 6px;
@@ -1138,37 +1133,28 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
   justify-content: center;
   gap: 0.5rem;
 }
-.button-primary {
+.button--primary {
   background-color: var(--button-bg);
   color: var(--button-text);
 }
-.button-primary:hover {
+.button--primary:hover {
   background-color: var(--button-hover-bg);
 }
-.button-secondary {
+.button--secondary {
   background-color: var(--button-secondary-bg);
   color: var(--button-secondary-text);
   border-color: var(--button-secondary-border);
 }
-.button-secondary:hover {
+.button--secondary:hover {
   background-color: var(--button-secondary-hover-bg);
   border-color: var(--button-secondary-hover-border);
 }
-.button-tertiary {
-  background: none;
-  color: var(--text-color);
-  border: none;
-  padding: 0.5rem 0.5rem;
-}
-.button-tertiary:hover {
-  background-color: var(--button-hover-bg-light);
-}
 
 /* --- Settings Modal --- */
-.settings-modal .modal-body {
+.settings-modal .modal__body {
   display: flex;
   flex-direction: column;
-  gap: 2rem; /* Increased gap */
+  gap: 2rem;
 }
 .settings-modal p {
   margin: 0 0 0.5rem;
@@ -1176,9 +1162,10 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
   color: var(--secondary-text-color);
   line-height: 1.5;
 }
-.settings-modal .modal-footer {
+.settings-modal .modal__footer {
   justify-content: space-between;
 }
+
 .instruction-editor {
   display: flex;
   flex-direction: column;
@@ -1187,17 +1174,17 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
   padding-left: 1rem;
   border-radius: 4px;
 }
-.instruction-editor-color-1 { border-color: var(--agent-1-color); }
-.instruction-editor-color-2 { border-color: var(--agent-2-color); }
-.instruction-editor-color-3 { border-color: var(--agent-3-color); }
-.instruction-editor-color-4 { border-color: var(--agent-4-color); }
+.instruction-editor--color-1 { border-color: var(--agent-1-color); }
+.instruction-editor--color-2 { border-color: var(--agent-2-color); }
+.instruction-editor--color-3 { border-color: var(--agent-3-color); }
+.instruction-editor--color-4 { border-color: var(--agent-4-color); }
 
-.instruction-editor label {
+.instruction-editor__label {
   font-weight: 500;
   font-size: 0.9rem;
   color: var(--text-color);
 }
-.instruction-editor textarea {
+.instruction-editor__textarea {
   width: 100%;
   border: 1px solid var(--border-color);
   background-color: var(--input-background);
@@ -1210,7 +1197,7 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
   min-height: 80px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-.instruction-editor textarea:focus {
+.instruction-editor__textarea:focus {
   outline: none;
   border-color: var(--input-focus-shadow);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-shadow) 40%, transparent);
@@ -1221,12 +1208,12 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
   flex-direction: column;
   gap: 0.5rem;
 }
-.api-key-editor label {
+.api-key-editor__label {
   font-weight: 500;
   font-size: 1rem;
   color: var(--text-color);
 }
-.api-key-editor input {
+.api-key-editor__input {
   width: 100%;
   border: 1px solid var(--border-color);
   background-color: var(--input-background);
@@ -1237,15 +1224,14 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
   font-size: 0.9rem;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-.api-key-editor input:focus {
+.api-key-editor__input:focus {
   outline: none;
   border-color: var(--input-focus-shadow);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-shadow) 40%, transparent);
 }
 
-
 /* --- Edit Prompt Modal --- */
-.edit-prompt-modal .modal-body textarea {
+.edit-prompt-modal .modal__body textarea {
   width: 100%;
   min-height: 200px;
   border: 1px solid var(--border-color);
@@ -1257,7 +1243,7 @@ html[data-theme='dark'] .agent-status-indicator.status-pending::before {
   font-size: 1rem;
   resize: vertical;
 }
-.edit-prompt-modal .modal-body textarea:focus {
+.edit-prompt-modal .modal__body textarea:focus {
   outline: none;
   border-color: var(--input-focus-shadow);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-shadow) 40%, transparent);

@@ -29,23 +29,23 @@ interface SidebarProps {
 const Sidebar: FC<SidebarProps> = ({ chats, activeChatId, onNewChat, onSelectChat, onDeleteChat }) => {
   return (
     <>
-      <div className="sidebar-header">
-        <button className="new-chat-button" onClick={onNewChat}>
+      <div className="sidebar__header">
+        <button className="sidebar__new-chat-button" onClick={onNewChat}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 6c.55 0 1 .45 1 1v4h4c.55 0 1 .45 1 1s-.45 1-1 1h-4v4c0 .55-.45 1-1 1s-1-.45-1-1v-4H7c-.55 0-1-.45-1-1s.45-1 1-1h4V7c0-.55.45-1 1-1z"/></svg>
           New Chat
         </button>
       </div>
-      <ul className="chat-history-list">
+      <ul className="sidebar__chat-history">
         {chats.map(chat => (
           <li
             key={chat.id}
-            className={`chat-history-item ${activeChatId === chat.id ? 'active' : ''}`}
+            className={`chat-history-item ${activeChatId === chat.id ? 'chat-history-item--active' : ''}`}
             onClick={() => onSelectChat(chat.id)}
             title={chat.title}
           >
-            <span className="chat-title">{chat.title}</span>
+            <span className="chat-history-item__title">{chat.title}</span>
             <button
-              className="delete-chat-button"
+              className="chat-history-item__delete-button"
               onClick={(e) => { e.stopPropagation(); onDeleteChat(chat.id); }}
               aria-label={`Delete chat: ${chat.title}`}
             >

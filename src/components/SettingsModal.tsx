@@ -75,19 +75,20 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content settings-modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Settings</h2>
-          <button onClick={onClose} className="close-button" aria-label="Close settings">&times;</button>
+      <div className="modal settings-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal__header">
+          <h2 className="modal__title">Settings</h2>
+          <button onClick={onClose} className="modal__close-button" aria-label="Close settings">&times;</button>
         </div>
-        <div className="modal-body">
+        <div className="modal__body">
           <div>
             <p>Customize the core behavior for each agent. This instruction is used for their initial response.</p>
             {currentInstructions.map((inst, index) => (
-              <div key={index} className={`instruction-editor instruction-editor-color-${index + 1}`}>
-                <label htmlFor={`agent-inst-${index}`}>Agent {index + 1} Instruction</label>
+              <div key={index} className={`instruction-editor instruction-editor--color-${index + 1}`}>
+                <label htmlFor={`agent-inst-${index}`} className="instruction-editor__label">Agent {index + 1} Instruction</label>
                 <textarea
                   id={`agent-inst-${index}`}
+                  className="instruction-editor__textarea"
                   value={inst}
                   onChange={(e) => handleInstructionChange(index, e.target.value)}
                   rows={5}
@@ -98,11 +99,12 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
           </div>
 
           <div className="api-key-editor">
-             <label htmlFor="tavily-api-key">Tavily API Key</label>
+             <label htmlFor="tavily-api-key" className="api-key-editor__label">Tavily API Key</label>
              <p>Required for the "Internet" toggle to function. Get a free key from Tavily AI.</p>
              <input
                 id="tavily-api-key"
                 type="password"
+                className="api-key-editor__input"
                 value={currentTavilyKey}
                 onChange={(e) => setCurrentTavilyKey(e.target.value)}
                 placeholder="Enter your Tavily API Key"
@@ -111,11 +113,11 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
           </div>
 
         </div>
-        <div className="modal-footer">
-          <button onClick={handleReset} className="button-secondary">Reset Instructions</button>
-          <div className="modal-actions">
-            <button onClick={onClose} className="button-secondary">Cancel</button>
-            <button onClick={handleSave} className="button-primary">Save Changes</button>
+        <div className="modal__footer">
+          <button onClick={handleReset} className="button button--secondary">Reset Instructions</button>
+          <div className="modal__actions">
+            <button onClick={onClose} className="button button--secondary">Cancel</button>
+            <button onClick={handleSave} className="button button--primary">Save Changes</button>
           </div>
         </div>
       </div>
