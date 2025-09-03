@@ -222,26 +222,70 @@ const AgentBox: FC<{ agentId: number, status?: string, response: string }> = ({ 
     </div>
   );
 
-const CollaborationTraceView: FC<{ trace: CollaborationTrace }> = ({ trace }) => (
-  <div className="collaboration-trace">
-    <div className="trace-phase">
-      <h3 className="trace-phase-header">Phase 1: Initial Responses</h3>
+// Trace view agent box with toggle between initial and refined responses
+const TraceAgentBox: FC<{ agentId: number, initial?: string, refined?: string }> = ({ agentId, initial, refined }) => {
+  const hasInitial = Boolean(initial && initial.trim());
+  const hasRefined = Boolean(refined && refined.trim());
+  const [view, setView] = useState<'initial' | 'refined'>(hasRefined ? 'refined' : 'initial');
+  const content = view === 'refined' ? (refined || '') : (initial || '');
+
+  return (
+    <div className={`agent-box agent-box-color-${agentId + 1}`}>
+      <div className="agent-box-header">
+        <span>Agent {agentId + 1}</span>
+        <div className="response-toggle-group" role="group" aria-label={`Toggle Agent ${agentId + 1} response`}>
+          <button
+            type="button"
+            className={`response-toggle ${view === 'initial' ? 'active' : ''}`}
+            onClick={() => setView('initial')}
+            disabled={!hasInitial}
+            aria-pressed={view === 'initial'}
+            aria-label="Show initial response"
+          >
+            Initial
+          </button>
+          <button
+            type="button"
+            className={`response-toggle ${view === 'refined' ? 'active' : ''}`}
+            onClick={() => setView('refined')}
+            disabled={!hasRefined}
+            aria-pressed={view === 'refined'}
+            aria-label="Show refined response"
+          >
+            Refined
+          </button>
+        </div>
+      </div>
+      <div className="agent-box-content">
+        {content ? (
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ pre: ({ children }) => <>{children}</>, code: ({ children }) => <code>{children}</code> }}>
+            {content}
+          </ReactMarkdown>
+        ) : (
+          <div className="placeholder">No response available</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const CollaborationTraceView: FC<{ trace: CollaborationTrace }> = ({ trace }) => {
+  const maxAgents = Math.max(trace.initialResponses?.length || 0, trace.refinedResponses?.length || 0);
+  return (
+    <div className="collaboration-trace">
       <div className="agent-grid">
-        {trace.initialResponses.map((resp, index) => (
-          <AgentBox key={`init-${index}`} agentId={index} response={resp} />
+        {Array.from({ length: maxAgents }).map((_, index) => (
+          <TraceAgentBox
+            key={`trace-agent-${index}`}
+            agentId={index}
+            initial={trace.initialResponses?.[index]}
+            refined={trace.refinedResponses?.[index]}
+          />
         ))}
       </div>
     </div>
-    <div className="trace-phase">
-      <h3 className="trace-phase-header">Phase 2: Refined Responses</h3>
-      <div className="agent-grid">
-        {trace.refinedResponses.map((resp, index) => (
-          <AgentBox key={`refine-${index}`} agentId={index} response={resp} />
-        ))}
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 const LiveAgentWorkspace: FC<{ agentStates: LiveAgentState[], isVisible: boolean }> = ({ agentStates, isVisible }) => (
   <div className={`agent-grid-container ${isVisible ? 'visible' : ''}`}>
@@ -304,7 +348,8 @@ const App: FC = () => {
   const [agentInstructions, setAgentInstructions] = useState<string[]>(() => Array(4).fill(INITIAL_SYSTEM_INSTRUCTION));
 
   useEffect(() => {
-    aiRef.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = (globalThis as any)?.process?.env?.API_KEY || localStorage.getItem('GENAI_API_KEY') || '';
+    aiRef.current = new GoogleGenAI({ apiKey });
   }, []);
 
   useEffect(() => {
@@ -341,7 +386,7 @@ const App: FC = () => {
             contents: [{ role: 'user', parts: [{ text: input }] }],
             config: { systemInstruction: agentInstructions[agent.id] },
           });
-          const text = response.text;
+          const text = response.text ?? '';
           setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
           return text;
         })
@@ -359,7 +404,7 @@ const App: FC = () => {
             contents: [{ role: 'user', parts: [{ text: refinementPrompt }] }],
             config: { systemInstruction: REFINEMENT_SYSTEM_INSTRUCTION },
           });
-          const text = response.text;
+          const text = response.text ?? '';
           setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text, status: 'done' } : a));
           return text;
         })
@@ -373,7 +418,7 @@ const App: FC = () => {
         contents: [{ role: 'user', parts: [{ text: finalPrompt }] }],
         config: { systemInstruction: SYNTHESIZER_SYSTEM_INSTRUCTION },
       });
-      const finalText = finalResponse.text;
+      const finalText = finalResponse.text ?? '';
 
       const collaborationTrace: CollaborationTrace = { initialResponses, refinedResponses };
       const modelMessage: Message = {
