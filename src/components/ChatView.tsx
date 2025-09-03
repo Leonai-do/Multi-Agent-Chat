@@ -1,11 +1,14 @@
-
-
+/**
+ * @file This component represents the main chat interface, including the header,
+ * message list, and input form.
+ */
 import React, { FC, FormEvent, useRef, useEffect } from 'react';
 import type { Chat, LiveAgentState } from '../types';
 import MessageItem from './MessageItem';
 import LiveAgentWorkspace from './LiveAgentWorkspace';
 import ThemeSwitcher from './ThemeSwitcher';
 
+/** Props for the ChatView component. */
 interface ChatViewProps {
     activeChat: Chat | undefined;
     isLoading: boolean;
@@ -22,6 +25,13 @@ interface ChatViewProps {
     onResendMessage: (messageId: string, newText: string) => void;
 }
 
+/**
+ * The main view for a chat conversation. It displays messages, handles user input,
+ * and shows the live agent workspace during generation.
+ *
+ * @param {ChatViewProps} props - The component props.
+ * @returns {React.ReactElement} The rendered chat view.
+ */
 const ChatView: FC<ChatViewProps> = ({ 
     activeChat, 
     isLoading, 
@@ -39,6 +49,10 @@ const ChatView: FC<ChatViewProps> = ({
 }) => {
     const messageListRef = useRef<HTMLDivElement>(null);
 
+    /**
+     * Effect to automatically scroll to the bottom of the message list
+     * when new messages are added or the collaboration state appears.
+     */
     useEffect(() => {
         if (messageListRef.current) {
             messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
@@ -47,7 +61,7 @@ const ChatView: FC<ChatViewProps> = ({
 
     return (
         <div className="chat-container">
-            <header>
+            <header className="header">
                 <button className="menu-button" onClick={() => setIsSidebarOpen(!isSidebarOpen)} aria-label="Toggle menu">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" /></svg>
                 </button>
@@ -55,7 +69,7 @@ const ChatView: FC<ChatViewProps> = ({
                 <div className="header-actions">
                     <ThemeSwitcher />
                     <button className="settings-button" onClick={() => setIsSettingsOpen(true)} aria-label="Open settings">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59-1.69-.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" /></svg>
                     </button>
                 </div>
             </header>
@@ -70,10 +84,12 @@ const ChatView: FC<ChatViewProps> = ({
                                     <span className="agent-workspace-title">Agent Collaboration Status</span>
                                     <button onClick={() => setShowCollaboration(!showCollaboration)} className="collaboration-toggle" aria-expanded={showCollaboration}>
                                         {showCollaboration ? 'Hide' : 'Show'} Details
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={showCollaboration ? 'expanded' : ''}><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" /></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={showCollaboration ? "expanded" : ''}><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" /></svg>
                                     </button>
                                 </div>
-                                <LiveAgentWorkspace agentStates={currentCollaborationState} isVisible={showCollaboration} />
+                                <div className={`agent-grid-container ${showCollaboration ? "visible" : ''}`}>
+                                    <LiveAgentWorkspace agentStates={currentCollaborationState} className="agent-grid" />
+                                </div>
                             </div>
                         )}
                     </>

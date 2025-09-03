@@ -1,0 +1,67 @@
+/**
+ * CSS Modules for the ThemeSwitcher component.
+ */
+.themeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  color: var(--secondary-text-color);
+}
+.themeButton:hover {
+  background-color: var(--button-hover-bg-light);
+}
+.themeButton svg {
+  width: 24px;
+  height: 24px;
+}
+.themeSwitcher {
+  position: relative;
+}
+.themeDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background-color: var(--app-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  z-index: 10;
+  width: 150px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.themeItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: left;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+.themeItem:hover {
+  background-color: var(--button-hover-bg-light);
+}
+.themeItem.active {
+  background-color: var(--user-message-bg);
+  color: var(--user-message-text);
+  font-weight: 500;
+}
+.themeItem svg {
+  width: 18px;
+  height: 18px;
+}

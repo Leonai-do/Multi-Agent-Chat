@@ -1,0 +1,116 @@
+/**
+ * CSS Modules for the AgentBox components.
+ */
+.agentBox {
+  background-color: var(--app-background);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+html[data-theme='dark'] .agentBox {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Color theming for each agent */
+.agent-box-color-1 { --agent-color: var(--agent-1-color); }
+.agent-box-color-2 { --agent-color: var(--agent-2-color); }
+.agent-box-color-3 { --agent-color: var(--agent-3-color); }
+.agent-box-color-4 { --agent-color: var(--agent-4-color); }
+
+.agentBoxHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--agent-color);
+  color: #fff;
+}
+/* Yellow agent color needs dark text for readability */
+.agent-box-color-3 .agentBoxHeader {
+  color: #202124;
+}
+
+.responseToggleGroup {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+.responseToggle {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 9999px;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.responseToggle:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+.responseToggle.active {
+  background-color: #fff;
+  color: var(--agent-color);
+  border-color: #fff;
+}
+.responseToggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+/* Special toggle styles for yellow agent */
+.agent-box-color-3 .responseToggle {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #3c4043;
+}
+.agent-box-color-3 .responseToggle:hover:not(:disabled) {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+.agent-box-color-3 .responseToggle.active {
+  background-color: #3c4043;
+  color: #fff;
+  border-color: #3c4043;
+}
+
+.agentStatusIndicator {
+  font-weight: 500;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 1rem;
+  text-transform: capitalize;
+  background-color: rgba(255,255,255, 0.25);
+  color: #fff;
+}
+.agent-box-color-3 .agentStatusIndicator {
+  background-color: rgba(0,0,0,0.1);
+  color: #202124;
+}
+
+.agentBoxContent {
+  flex-grow: 1;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-y: auto;
+  max-height: 250px;
+  color: var(--text-color);
+  padding: 0.75rem;
+  word-break: break-word;
+}
+.agentBoxContent > div > *:first-child {
+  margin-top: 0;
+}
+.agentBoxContent > div > *:last-child {
+  margin-bottom: 0;
+}
+.placeholder {
+  color: var(--secondary-text-color);
+}

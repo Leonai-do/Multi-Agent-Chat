@@ -1,6 +1,17 @@
+/**
+ * @file Renders the application's sidebar, which contains the chat history and a new chat button.
+ */
 import React, { FC } from 'react';
 import type { Chat } from '../types';
 
+/**
+ * Props for the Sidebar component.
+ * @property {Chat[]} chats - The list of all chat sessions.
+ * @property {string | null} activeChatId - The ID of the currently active chat.
+ * @property {() => void} onNewChat - Callback function to create a new chat.
+ * @property {(id: string) => void} onSelectChat - Callback function to select a chat from the history.
+ * @property {(id: string) => void} onDeleteChat - Callback function to delete a chat from the history.
+ */
 interface SidebarProps {
   chats: Chat[];
   activeChatId: string | null;
@@ -9,6 +20,12 @@ interface SidebarProps {
   onDeleteChat: (id: string) => void;
 }
 
+/**
+ * The main sidebar component for navigating between chats.
+ *
+ * @param {SidebarProps} props - The component props.
+ * @returns {React.ReactElement} The rendered sidebar.
+ */
 const Sidebar: FC<SidebarProps> = ({ chats, activeChatId, onNewChat, onSelectChat, onDeleteChat }) => {
   return (
     <>
@@ -20,9 +37,18 @@ const Sidebar: FC<SidebarProps> = ({ chats, activeChatId, onNewChat, onSelectCha
       </div>
       <ul className="chat-history-list">
         {chats.map(chat => (
-          <li key={chat.id} className={`chat-history-item ${activeChatId === chat.id ? 'active' : ''}`} onClick={() => onSelectChat(chat.id)}>
-            {chat.title}
-            <button className="delete-chat-button" onClick={(e) => { e.stopPropagation(); onDeleteChat(chat.id); }} aria-label={`Delete chat: ${chat.title}`}>
+          <li
+            key={chat.id}
+            className={`chat-history-item ${activeChatId === chat.id ? "active" : ''}`}
+            onClick={() => onSelectChat(chat.id)}
+            title={chat.title}
+          >
+            <span className="chat-title">{chat.title}</span>
+            <button
+              className="delete-chat-button"
+              onClick={(e) => { e.stopPropagation(); onDeleteChat(chat.id); }}
+              aria-label={`Delete chat: ${chat.title}`}
+            >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             </button>
           </li>

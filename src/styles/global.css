@@ -1,0 +1,148 @@
+/**
+ * This file contains all global CSS styles and variables for the application.
+ * It includes theme definitions (light and dark), base element styling,
+ * and themed scrollbar designs.
+ */
+
+/* Set a solid box-sizing model for all elements */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Light theme color variables */
+:root {
+  --background-color: #f0f4f9;
+  --app-background: #ffffff;
+  --header-border: #dadce0;
+  --text-color: #3c4043;
+  --secondary-text-color: #5f6368;
+  --border-color: #dadce0;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+  --modal-footer-bg: #f8f9fa;
+  --button-hover-bg-light: rgba(0,0,0,0.05);
+
+  --user-message-bg: #0b57d0;
+  --user-message-text: #ffffff;
+  --model-message-bg: #eef1f5;
+  --model-message-text: #1f1f1f;
+  
+  --input-background: #ffffff;
+  --input-border: #dadce0;
+  --input-focus-shadow: #0b57d0;
+  
+  --button-bg: #0b57d0;
+  --button-text: #ffffff;
+  --button-hover-bg: #0a4cb5;
+  --button-disabled-bg: #a0c3ff;
+  
+  --button-secondary-bg: #e8eaed;
+  --button-secondary-text: #3c4043;
+  --button-secondary-border: #dadce0;
+  --button-secondary-hover-bg: #f1f3f4;
+  --button-secondary-hover-border: #c6c6c6;
+
+  --code-bg: rgba(0, 0, 0, 0.05);
+  --pre-bg: rgba(0, 0, 0, 0.07);
+  --code-text-color: #1f1f1f;
+  --copy-button-bg: #f1f3f4;
+  --copy-button-text: #3c4043;
+  --copy-button-border: #dadce0;
+  --copy-button-hover-bg: #e8eaed;
+  
+  /* Agent Colors */
+  --agent-1-color: #4285F4; /* Blue */
+  --agent-2-color: #DB4437; /* Red */
+  --agent-3-color: #F4B400; /* Yellow */
+  --agent-4-color: #0F9D58; /* Green */
+  
+  /* Themed Scrollbars */
+  --scrollbar-track-bg: #e4e4e4;
+  --scrollbar-thumb-bg: #c1c1c1;
+  --scrollbar-thumb-hover-bg: #a8a8a8;
+}
+
+/* Dark theme color variables */
+html[data-theme='dark'] {
+  --background-color: #1a1c2c;
+  --app-background: #24273a;
+  --header-border: #3c3f58;
+  --text-color: #e0e0e0;
+  --secondary-text-color: #a0a0b8;
+  --border-color: #4a4d6a;
+  --shadow-color: rgba(0, 0, 0, 0.25);
+  --overlay-bg: rgba(0, 0, 0, 0.7);
+  --modal-footer-bg: #1e2030;
+  --button-hover-bg-light: rgba(255, 255, 255, 0.08);
+
+  --user-message-bg: #ff6f61;
+  --user-message-text: #111111;
+  --model-message-bg: #3c3f58;
+  --model-message-text: #e0e0e0;
+
+  --input-background: #2f3249;
+  --input-border: #4a4d6a;
+  --input-focus-shadow: #ff6f61;
+
+  --button-bg: #ff6f61;
+  --button-text: #111111;
+  --button-hover-bg: #ff8a7d;
+  --button-disabled-bg: #7c4c47;
+  
+  --button-secondary-bg: #4a4d6a;
+  --button-secondary-text: #e0e0e0;
+  --button-secondary-border: #4a4d6a;
+  --button-secondary-hover-bg: #5a5d80;
+  --button-secondary-hover-border: #6a6d90;
+  
+  --code-bg: rgba(0, 0, 0, 0.2);
+  --pre-bg: rgba(0, 0, 0, 0.3);
+  --code-text-color: #e0e0e0;
+  --copy-button-bg: #3c3f58;
+  --copy-button-text: #e0e0e0;
+  --copy-button-border: #4a4d6a;
+  --copy-button-hover-bg: #4a4d6a;
+
+  /* Themed Scrollbars */
+  --scrollbar-track-bg: #2f3249;
+  --scrollbar-thumb-bg: #4a4d6a;
+  --scrollbar-thumb-hover-bg: #5a5d80;
+}
+
+/* Base layout and font styles */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  font-family: 'Google Sans', sans-serif, system-ui;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease;
+}
+
+/* Themed Scrollbar Styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb-bg) var(--scrollbar-track-bg);
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-bg);
+  border-radius: 10px;
+  border: 2px solid var(--app-background);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-bg);
+}

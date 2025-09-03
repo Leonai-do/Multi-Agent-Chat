@@ -1,0 +1,162 @@
+/**
+ * CSS Modules for the SettingsModal and shared modal components.
+ */
+
+/* --- Modals (General) --- */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--overlay-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modalContent {
+  background-color: var(--app-background);
+  border-radius: 1rem;
+  box-shadow: 0 5px 25px var(--shadow-color);
+  width: 90%;
+  max-width: 650px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.3s ease-out;
+}
+@keyframes slideIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--header-border);
+}
+.modalHeader h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--secondary-text-color);
+  padding: 0.25rem 0.5rem;
+}
+.modalBody {
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--header-border);
+  background-color: var(--modal-footer-bg);
+  border-bottom-left-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+.modalActions {
+  display: flex;
+  gap: 0.75rem;
+}
+.buttonPrimary, .buttonSecondary, .buttonTertiary {
+  border: 1px solid transparent;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.buttonPrimary {
+  background-color: var(--button-bg);
+  color: var(--button-text);
+}
+.buttonPrimary:hover {
+  background-color: var(--button-hover-bg);
+}
+.buttonSecondary {
+  background-color: var(--button-secondary-bg);
+  color: var(--button-secondary-text);
+  border-color: var(--button-secondary-border);
+}
+.buttonSecondary:hover {
+  background-color: var(--button-secondary-hover-bg);
+  border-color: var(--button-secondary-hover-border);
+}
+.buttonTertiary {
+  background: none;
+  color: var(--text-color);
+  border: none;
+  padding: 0.5rem 0.5rem;
+}
+.buttonTertiary:hover {
+  background-color: var(--button-hover-bg-light);
+}
+
+/* --- Settings Modal Specifics --- */
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.modalBody p {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: var(--secondary-text-color);
+  line-height: 1.5;
+}
+.modalFooter {
+  justify-content: space-between;
+}
+.instructionEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-left: 4px solid;
+  padding-left: 1rem;
+  border-radius: 4px;
+}
+.instruction-editor-color-1 { border-color: var(--agent-1-color); }
+.instruction-editor-color-2 { border-color: var(--agent-2-color); }
+.instruction-editor-color-3 { border-color: var(--agent-3-color); }
+.instruction-editor-color-4 { border-color: var(--agent-4-color); }
+
+.instructionEditor label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+.instructionEditor textarea {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-background);
+  color: var(--text-color);
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.instructionEditor textarea:focus {
+  outline: none;
+  border-color: var(--input-focus-shadow);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-shadow) 40%, transparent);
+}
