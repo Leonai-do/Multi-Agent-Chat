@@ -10,12 +10,16 @@ import { INITIAL_SYSTEM_INSTRUCTION } from '../constants';
  * @property {() => void} onClose - Function to call when the modal should be closed.
  * @property {string[]} instructions - The current system instructions for the agents.
  * @property {(newInstructions: string[]) => void} onSave - Callback function to save the updated instructions.
+ * @property {string} tavilyApiKey - The current Tavily API key.
+ * @property {(key: string) => void} onSaveTavilyApiKey - Callback to save the Tavily API key.
  */
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   instructions: string[];
   onSave: (newInstructions: string[]) => void;
+  tavilyApiKey: string;
+  onSaveTavilyApiKey: (key: string) => void;
 }
 
 /**
@@ -25,16 +29,19 @@ interface SettingsModalProps {
  * @param {SettingsModalProps} props - The component props.
  * @returns {React.ReactElement | null} The rendered modal or null if not open.
  */
-const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, onSave }) => {
+const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, onSave, tavilyApiKey, onSaveTavilyApiKey }) => {
   // Local state to manage instruction edits before saving.
   const [currentInstructions, setCurrentInstructions] = useState(instructions);
+  // Local state for the Tavily API key.
+  const [currentTavilyKey, setCurrentTavilyKey] = useState(tavilyApiKey);
   
   // Effect to sync local state with props when the modal is opened.
   useEffect(() => {
     if (isOpen) {
       setCurrentInstructions(instructions);
+      setCurrentTavilyKey(tavilyApiKey);
     }
-  }, [instructions, isOpen]);
+  }, [instructions, tavilyApiKey, isOpen]);
   
   // Don't render anything if the modal is not open.
   if (!isOpen) return null;
@@ -51,10 +58,11 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
   };
   
   /**
-   * Saves the current local state via the onSave prop and closes the modal.
+   * Saves all settings (instructions and API key) and closes the modal.
    */
   const handleSave = () => {
     onSave(currentInstructions);
+    onSaveTavilyApiKey(currentTavilyKey);
     onClose();
   };
   
@@ -69,26 +77,42 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content settings-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Agent System Instructions</h2>
+          <h2>Settings</h2>
           <button onClick={onClose} className="close-button" aria-label="Close settings">&times;</button>
         </div>
         <div className="modal-body">
-          <p>Customize the core behavior for each agent. This instruction is used for their initial response.</p>
-          {currentInstructions.map((inst, index) => (
-            <div key={index} className={`instruction-editor instruction-editor-color-${index + 1}`}>
-              <label htmlFor={`agent-inst-${index}`}>Agent {index + 1} Instruction</label>
-              <textarea
-                id={`agent-inst-${index}`}
-                value={inst}
-                onChange={(e) => handleInstructionChange(index, e.target.value)}
-                rows={5}
-                aria-label={`System instruction for Agent ${index + 1}`}
-              />
-            </div>
-          ))}
+          <div>
+            <p>Customize the core behavior for each agent. This instruction is used for their initial response.</p>
+            {currentInstructions.map((inst, index) => (
+              <div key={index} className={`instruction-editor instruction-editor-color-${index + 1}`}>
+                <label htmlFor={`agent-inst-${index}`}>Agent {index + 1} Instruction</label>
+                <textarea
+                  id={`agent-inst-${index}`}
+                  value={inst}
+                  onChange={(e) => handleInstructionChange(index, e.target.value)}
+                  rows={5}
+                  aria-label={`System instruction for Agent ${index + 1}`}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="api-key-editor">
+             <label htmlFor="tavily-api-key">Tavily API Key</label>
+             <p>Required for the "Internet" toggle to function. Get a free key from Tavily AI.</p>
+             <input
+                id="tavily-api-key"
+                type="password"
+                value={currentTavilyKey}
+                onChange={(e) => setCurrentTavilyKey(e.target.value)}
+                placeholder="Enter your Tavily API Key"
+                aria-label="Tavily API Key input"
+             />
+          </div>
+
         </div>
         <div className="modal-footer">
-          <button onClick={handleReset} className="button-secondary">Reset to Defaults</button>
+          <button onClick={handleReset} className="button-secondary">Reset Instructions</button>
           <div className="modal-actions">
             <button onClick={onClose} className="button-secondary">Cancel</button>
             <button onClick={handleSave} className="button-primary">Save Changes</button>

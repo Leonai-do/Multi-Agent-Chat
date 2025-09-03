@@ -12,6 +12,9 @@ import ThemeSwitcher from './ThemeSwitcher';
 interface ChatViewProps {
     activeChat: Chat | undefined;
     isLoading: boolean;
+    loadingMessage: string;
+    internetEnabled: boolean;
+    onToggleInternet: () => void;
     currentCollaborationState: LiveAgentState[];
     showCollaboration: boolean;
     setShowCollaboration: (show: boolean) => void;
@@ -34,7 +37,10 @@ interface ChatViewProps {
  */
 const ChatView: FC<ChatViewProps> = ({ 
     activeChat, 
-    isLoading, 
+    isLoading,
+    loadingMessage,
+    internetEnabled,
+    onToggleInternet,
     currentCollaborationState, 
     showCollaboration, 
     setShowCollaboration, 
@@ -57,7 +63,7 @@ const ChatView: FC<ChatViewProps> = ({
         if (messageListRef.current) {
             messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
         }
-    }, [activeChat, currentCollaborationState]);
+    }, [activeChat, currentCollaborationState, loadingMessage]);
 
     return (
         <div className="chat-container">
@@ -67,6 +73,10 @@ const ChatView: FC<ChatViewProps> = ({
                 </button>
                 <h1>Multi-Agent Chat</h1>
                 <div className="header-actions">
+                    <button className={`internet-toggle ${internetEnabled ? 'enabled' : ''}`} onClick={onToggleInternet} title={internetEnabled ? 'Disable Internet Access' : 'Enable Internet Access'}>
+                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                       <span>Internet</span>
+                    </button>
                     <ThemeSwitcher />
                     <button className="settings-button" onClick={() => setIsSettingsOpen(true)} aria-label="Open settings">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49 1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59-1.69-.98l2.49 1c.23.09.49 0 .61.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z" /></svg>
@@ -78,7 +88,10 @@ const ChatView: FC<ChatViewProps> = ({
                 {activeChat ? (
                     <>
                         {activeChat.messages.map((msg) => <MessageItem key={msg.id} message={msg} onUpdateMessage={onUpdateMessage} onResendMessage={onResendMessage} />)}
-                        {isLoading && (
+                        {isLoading && loadingMessage && (
+                           <div className="loading-message">{loadingMessage}</div>
+                        )}
+                        {isLoading && currentCollaborationState.length > 0 && (
                             <div className="agent-workspace">
                                 <div className="agent-workspace-header">
                                     <span className="agent-workspace-title">Agent Collaboration Status</span>

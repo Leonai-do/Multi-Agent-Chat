@@ -351,6 +351,39 @@ body {
   width: 24px;
   height: 24px;
 }
+
+/* Internet Toggle Button */
+.internet-toggle {
+  background-color: var(--button-secondary-bg);
+  border: 1px solid var(--button-secondary-border);
+  color: var(--button-secondary-text);
+  padding: 0.4rem 0.8rem;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.internet-toggle:hover {
+  background-color: var(--button-secondary-hover-bg);
+}
+.internet-toggle svg {
+  width: 18px;
+  height: 18px;
+  transition: color 0.3s ease;
+}
+.internet-toggle.enabled {
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border-color: var(--button-bg);
+}
+.internet-toggle.enabled:hover {
+  background-color: var(--button-hover-bg);
+}
+
 @media (max-width: 768px) {
   .menu-button {
     display: flex;
@@ -360,6 +393,13 @@ body {
   }
   .header-actions {
     gap: 0;
+  }
+  .internet-toggle span {
+    display: none;
+  }
+  .internet-toggle {
+    padding: 0.5rem;
+    border-radius: 50%;
   }
 }
 
@@ -390,6 +430,13 @@ body {
   flex-direction: column;
   gap: 0.25rem;
 }
+.loading-message {
+  text-align: center;
+  color: var(--secondary-text-color);
+  padding: 1rem;
+  font-style: italic;
+}
+
 
 /* --- Input Area --- */
 .input-area {
@@ -684,6 +731,36 @@ body {
   padding-top: 1rem;
 }
 
+.sources-container {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+.sources-container h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--secondary-text-color);
+  text-transform: uppercase;
+}
+.sources-list {
+  list-style-type: decimal;
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.source-item a {
+  font-size: 0.85rem;
+  color: var(--button-bg);
+  text-decoration: none;
+  word-break: break-all;
+}
+.source-item a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 768px) {
   .message-wrapper .message-actions {
     opacity: 0.6; /* Make actions always somewhat visible on mobile */
@@ -911,6 +988,49 @@ html[data-theme='dark'] .agent-box {
   background-color: rgba(0,0,0,0.1);
   color: #202124;
 }
+
+/* Visual indicator dot for agent status */
+@keyframes agent-pulse {
+  50% { opacity: 0.6; }
+}
+
+.agent-status-indicator::before {
+  content: "●";
+  margin-right: 0.4em;
+  font-size: 0.9em;
+  line-height: 1;
+  vertical-align: baseline;
+}
+
+/* Default 'working' state: pulsing yellow dot */
+.agent-status-indicator.status-initializing::before,
+.agent-status-indicator.status-writing::before,
+.agent-status-indicator.status-refining::before {
+  animation: agent-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  color: var(--agent-3-color);
+}
+
+/* Override dot color for agent 3 (yellow header) when 'working' to ensure contrast */
+.agent-box-color-3 .agent-status-indicator.status-initializing::before,
+.agent-box-color-3 .agent-status-indicator.status-writing::before,
+.agent-box-color-3 .agent-status-indicator.status-refining::before {
+  color: var(--agent-2-color); /* Use red for contrast */
+}
+
+/* Static gray dot for 'pending' */
+.agent-status-indicator.status-pending::before {
+  color: var(--secondary-text-color);
+}
+/* For dark theme pending */
+html[data-theme='dark'] .agent-status-indicator.status-pending::before {
+    opacity: 0.6;
+}
+
+/* Static green dot for 'done' */
+.agent-status-indicator.status-done::before {
+  color: var(--agent-4-color);
+}
+
 .agent-box-content {
   flex-grow: 1;
   font-size: 0.9rem;
@@ -1048,7 +1168,7 @@ html[data-theme='dark'] .agent-box {
 .settings-modal .modal-body {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem; /* Increased gap */
 }
 .settings-modal p {
   margin: 0 0 0.5rem;
@@ -1095,6 +1215,34 @@ html[data-theme='dark'] .agent-box {
   border-color: var(--input-focus-shadow);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-shadow) 40%, transparent);
 }
+
+.api-key-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.api-key-editor label {
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--text-color);
+}
+.api-key-editor input {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-background);
+  color: var(--text-color);
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.api-key-editor input:focus {
+  outline: none;
+  border-color: var(--input-focus-shadow);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-shadow) 40%, transparent);
+}
+
 
 /* --- Edit Prompt Modal --- */
 .edit-prompt-modal .modal-body textarea {

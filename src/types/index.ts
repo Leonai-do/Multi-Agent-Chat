@@ -21,17 +21,31 @@ export interface CollaborationTrace {
 }
 
 /**
+ * Represents a single web source used for grounding a model's response.
+ * @property {string} title - The title of the web page.
+ * @property {string} url - The URL of the source.
+ * @property {string} content - A snippet or the full content from the source.
+ */
+export interface Source {
+  title: string;
+  url: string;
+  content: string;
+}
+
+/**
  * Represents a single message in a chat conversation.
  * @property {string} id - A unique identifier for the message.
  * @property {'user' | 'model'} role - The sender of the message.
  * @property {{ text: string }[]} parts - The content of the message.
  * @property {CollaborationTrace} [collaborationTrace] - Optional data on the agent collaboration process for model messages.
+ * @property {Source[]} [sources] - Optional list of web sources used to generate the message.
  */
 export interface Message {
   id: string;
   role: 'user' | 'model';
   parts: { text: string }[];
   collaborationTrace?: CollaborationTrace;
+  sources?: Source[];
 }
 
 /**

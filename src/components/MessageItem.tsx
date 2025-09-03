@@ -85,6 +85,22 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
                 <pre className="raw-text-view"><code>{message.parts[0].text}</code></pre>
             )}
 
+            {/* Render sources if they exist */}
+            {message.sources && message.sources.length > 0 && (
+              <div className="sources-container">
+                  <h4>Sources</h4>
+                  <ol className="sources-list">
+                      {message.sources.map((source, index) => (
+                          <li key={index} className="source-item">
+                              <a href={source.url} target="_blank" rel="noopener noreferrer" title={source.url}>
+                                  {source.title}
+                              </a>
+                          </li>
+                      ))}
+                  </ol>
+              </div>
+            )}
+            
             {/* Toolbar for model messages */}
             {message.role === 'model' && (
                 <div className="message-toolbar">

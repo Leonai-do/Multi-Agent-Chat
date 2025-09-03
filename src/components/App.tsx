@@ -10,7 +10,7 @@ import Sidebar from './Sidebar';
 import SettingsModal from './SettingsModal';
 import ChatView from './ChatView';
 import { MODEL_NAME, INITIAL_SYSTEM_INSTRUCTION, REFINEMENT_SYSTEM_INSTRUCTION, SYNTHESIZER_SYSTEM_INSTRUCTION } from '../constants';
-import type { Chat, Message, LiveAgentState, CollaborationTrace } from '../types';
+import type { Chat, Message, LiveAgentState, CollaborationTrace, Source } from '../types';
 
 /**
  * The main App component.
@@ -40,25 +40,33 @@ const App: FC = () => {
   const [agentInstructions, setAgentInstructions] = useState<string[]>(() => Array(4).fill(INITIAL_SYSTEM_INSTRUCTION));
   // State for sidebar visibility, especially on mobile
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
+  // State for enabling/disabling internet access
+  const [internetEnabled, setInternetEnabled] = useState(false);
+  // State for showing a loading message during web search
+  const [loadingMessage, setLoadingMessage] = useState('');
+  // State for the Tavily API key, managed in Settings
+  const [tavilyApiKey, setTavilyApiKey] = useState<string>('');
 
-  // Effect to initialize the Gemini API client and load chats from localStorage
+  // Effect to initialize the Gemini API client and load data from localStorage
   useEffect(() => {
-    // It's assumed API_KEY is set in the environment.
+    // It's assumed API_KEY is set in the environment for Gemini.
     const apiKey = (globalThis as any)?.process?.env?.API_KEY || '';
     if (apiKey) {
       aiRef.current = new GoogleGenAI({ apiKey });
     } else {
-        console.error("API Key not found. Please ensure it's set in your environment variables.");
+        console.error("Gemini API Key not found. Please ensure it's set in your environment variables.");
     }
     
-    // Load chats from local storage on initial render
+    // Load chats and Tavily API key from local storage on initial render
     try {
       const savedChats = localStorage.getItem('multi-agent-chats');
-      if (savedChats) {
-        setChats(JSON.parse(savedChats));
-      }
+      if (savedChats) setChats(JSON.parse(savedChats));
+      
+      const savedTavilyKey = localStorage.getItem('tavily-api-key');
+      if (savedTavilyKey) setTavilyApiKey(savedTavilyKey);
+
     } catch (error) {
-      console.error("Failed to load chats from localStorage", error);
+      console.error("Failed to load data from localStorage", error);
     }
   }, []);
   
@@ -72,6 +80,16 @@ const App: FC = () => {
   }, [chats]);
   
   // --- Chat Management Handlers ---
+
+  /** Saves the Tavily API key to state and localStorage. */
+  const handleSaveTavilyApiKey = (key: string) => {
+    setTavilyApiKey(key);
+    try {
+        localStorage.setItem('tavily-api-key', key);
+    } catch (error) {
+        console.error("Failed to save Tavily API key to localStorage", error);
+    }
+  };
 
   /** Sets the active chat to null, effectively showing the welcome screen to start a new chat. */
   const handleNewChat = () => setActiveChatId(null);
@@ -96,6 +114,53 @@ const App: FC = () => {
   const runAgentCollaboration = async (prompt: string, chatId: string, isNewChat: boolean) => {
     setIsLoading(true);
     setShowCollaboration(true);
+    setLoadingMessage('');
+
+    let webContext = '';
+    let sources: Source[] = [];
+
+    // Step 0: Perform web search if internet is enabled
+    if (internetEnabled) {
+      setLoadingMessage('Searching the web...');
+      try {
+        if (!tavilyApiKey) {
+          throw new Error("Tavily API key not found. Please add it in the settings menu to enable web search.");
+        }
+
+        const response = await fetch('https://api.tavily.com/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: tavilyApiKey,
+            query: prompt,
+            search_depth: 'basic',
+            include_raw_content: true,
+            max_results: 3,
+          }),
+        });
+        if (!response.ok) throw new Error(`Tavily API error: ${response.statusText}`);
+        const searchData = await response.json();
+        
+        sources = (searchData.results || []).map((r: any): Source => ({
+            title: r.title,
+            url: r.url,
+            content: r.raw_content || '',
+        })).filter(s => s.content);
+
+        if (sources.length > 0) {
+            webContext = "Here is some context from a web search. Use this to inform your answer:\n\n" + 
+                sources.map((s, i) => `Source [${i + 1}] (${s.title}):\n${s.content}`).join('\n\n---\n\n');
+        }
+      } catch (e: any) {
+          console.error("Failed to fetch from Tavily API", e);
+          const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: `Sorry, I couldn't search the web. ${e.message}` }] };
+          setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
+          setIsLoading(false);
+          return;
+      }
+    }
+    
+    setLoadingMessage('Agents are collaborating...');
     // Initialize live agent state for the UI
     const initialAgents: LiveAgentState[] = Array.from({ length: 4 }, (_, i) => ({ id: i, status: 'initializing', response: '' }));
     setCurrentCollaborationState(initialAgents);
@@ -108,11 +173,13 @@ const App: FC = () => {
     }
       
     try {
+      const promptForAgents = webContext ? `${webContext}\n\nBased on the context above, please answer the following user query:\n${prompt}` : prompt;
+      
       // Step 1: Get initial responses from all four agents in parallel
       setCurrentCollaborationState(prev => prev.map(a => ({ ...a, status: 'writing' })));
       const initialResponses = await Promise.all(
         initialAgents.map(async (agent) => {
-          const response = await ai.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: prompt }] }], config: { systemInstruction: agentInstructions[agent.id] } });
+          const response = await ai.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: promptForAgents }] }], config: { systemInstruction: agentInstructions[agent.id] } });
           const text = response.text ?? '';
           setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
           return text;
@@ -133,12 +200,13 @@ const App: FC = () => {
       );
       
       // Step 3: Get the final synthesized response from the fifth agent
-      const finalPrompt = `Here are the four refined responses from the agent team:\n\n${refinedResponses.map((r, i) => `Refined Response from Agent ${i + 1}:\n${r}`).join('\n\n---\n\n')}\n\nSynthesize these into a single, final, comprehensive answer for the user.`;
+      const sourceListForSynthesizer = sources.map((s, i) => `Source [${i + 1}]: ${s.url}`).join('\n');
+      const finalPrompt = `Here are the four refined responses from the agent team:\n\n${refinedResponses.map((r, i) => `Refined Response from Agent ${i + 1}:\n${r}`).join('\n\n---\n\n')}\n\n${sourceListForSynthesizer ? `Use these sources for citation:\n${sourceListForSynthesizer}\n\n` : ''}Synthesize these into a single, final, comprehensive answer for the user. Remember to add citations like [1], [2] etc. where appropriate.`;
       const finalResponse = await ai.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: finalPrompt }] }], config: { systemInstruction: SYNTHESIZER_SYSTEM_INSTRUCTION } });
       const finalText = finalResponse.text ?? '';
       
       const collaborationTrace: CollaborationTrace = { initialResponses, refinedResponses };
-      const modelMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: finalText }], collaborationTrace };
+      const modelMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: finalText }], collaborationTrace, sources: sources.length > 0 ? sources : undefined };
       
       // Add the final model message to the active chat
       setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, modelMessage] } : c));
@@ -163,6 +231,7 @@ const App: FC = () => {
     } finally {
       setIsLoading(false);
       setCurrentCollaborationState([]);
+      setLoadingMessage('');
     }
   };
 
@@ -215,10 +284,7 @@ const App: FC = () => {
     const messageIndex = chat.messages.findIndex(m => m.id === messageId);
     if (messageIndex === -1) return;
 
-    // This needs to be async to run the collaboration, but the state update should be synchronous
-    // so it happens before the AI call.
     const resend = async () => {
-      // First, update the state to reflect the truncated and edited chat
       setChats(prev => prev.map(c => {
         if (c.id === activeChatId) {
           const updatedMessages = c.messages.map(m => m.id === messageId ? { ...m, parts: [{ text: newText }] } : m);
@@ -227,11 +293,8 @@ const App: FC = () => {
         }
         return c;
       }));
-      
-      // Then, run the collaboration with the new prompt
       await runAgentCollaboration(newText, activeChatId, false);
     };
-
     resend();
   };
 
@@ -239,13 +302,23 @@ const App: FC = () => {
 
   return (
     <div className="app-wrapper">
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} instructions={agentInstructions} onSave={setAgentInstructions} />
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+        instructions={agentInstructions} 
+        onSave={setAgentInstructions}
+        tavilyApiKey={tavilyApiKey}
+        onSaveTavilyApiKey={handleSaveTavilyApiKey}
+      />
       <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <Sidebar chats={chats} activeChatId={activeChatId} onNewChat={handleNewChat} onSelectChat={handleSelectChat} onDeleteChat={handleDeleteChat} />
       </div>
       <ChatView 
         activeChat={activeChat}
         isLoading={isLoading}
+        loadingMessage={loadingMessage}
+        internetEnabled={internetEnabled}
+        onToggleInternet={() => setInternetEnabled(prev => !prev)}
         currentCollaborationState={currentCollaborationState}
         showCollaboration={showCollaboration}
         setShowCollaboration={setShowCollaboration}

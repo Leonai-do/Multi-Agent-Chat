@@ -39,7 +39,7 @@ export const AgentBox: FC<AgentBoxProps> = ({ agentId, status, response }) => (
     <div className={`agent-box agent-box-color-${agentId + 1} ${status || ''}`}>
         <div className="agent-box-header">
             Agent {agentId + 1}
-            {status && <span className="agent-status-indicator">{status}</span>}
+            {status && <span className={`agent-status-indicator status-${status}`}>{status}</span>}
         </div>
         <div className="agent-box-content">
             {/* FIX: Corrected the code component rendering in ReactMarkdown. The previous implementation was calling an undefined 'code' function. */}
