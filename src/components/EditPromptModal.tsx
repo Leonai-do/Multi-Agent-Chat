@@ -56,24 +56,24 @@ const EditPromptModal: FC<EditPromptModalProps> = ({ isOpen, onClose, initialTex
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content edit-prompt-modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Edit Prompt</h2>
-          <button onClick={onClose} className="close-button" aria-label="Close edit modal">&times;</button>
+      <div className="modal edit-prompt-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal__header">
+          <h2 className="modal__title">Edit Prompt</h2>
+          <button onClick={onClose} className="modal__close-button" aria-label="Close edit modal">&times;</button>
         </div>
-        <div className="modal-body">
-          <textarea 
-            value={text} 
-            onChange={(e) => setText(e.target.value)} 
+        <div className="modal__body">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
             aria-label="Prompt text editor"
-            rows={10} 
+            rows={10}
           />
         </div>
-        <div className="modal-footer">
-          <div className="modal-actions">
-            <button onClick={onClose} className="button-secondary">Cancel</button>
-            <button onClick={handleSave} className="button-secondary">Save Changes</button>
-            <button onClick={handleSaveAndResend} className="button-primary">
+        <div className="modal__footer">
+          <div className="modal__actions">
+            <button onClick={onClose} className="button button--secondary">Cancel</button>
+            <button onClick={handleSave} className="button button--secondary">Save Changes</button>
+            <button onClick={handleSaveAndResend} className="button button--primary">
               Save & Resend
             </button>
           </div>
