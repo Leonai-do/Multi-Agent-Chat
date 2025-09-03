@@ -85,4 +85,6 @@ Virtualized message list: For long histories, use list virtualization to keep sc
 
 40- Analytics/telemetry (optional): Basic client‑side metrics for generation duration per agent and errors.
 
-41- 
+41- Make the agent's instruction box collapsable, separate their names in the boxes by adding a padding, since the names are too close to the content. of the box.
+
+42- 

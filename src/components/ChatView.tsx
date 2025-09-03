@@ -142,8 +142,13 @@ const ChatView: FC<ChatViewProps> = ({
                   onClick={() => setShowCollaboration(!showCollaboration)}
                   aria-expanded={showCollaboration}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 15.6l-6-6 1.4-1.4L12 12.8l4.6-4.6L18 9.6l-6 6z" className={showCollaboration ? 'expanded' : ''} />
+                  <svg
+                    className={showCollaboration ? 'expanded' : ''}
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 15.6l-6-6 1.4-1.4L12 12.8l4.6-4.6L18 9.6l-6 6z" />
                   </svg>
                   {showCollaboration ? 'Hide details' : 'Show details'}
                 </button>

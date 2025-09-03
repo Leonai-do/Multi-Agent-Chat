@@ -6,6 +6,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './src/components/App';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 // Find the root DOM element
 const rootElement = document.getElementById('root');
@@ -15,4 +16,8 @@ if (!rootElement) {
 
 // Create a React root and render the App component
 const root = createRoot(rootElement);
-root.render(<App />);
+root.render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
