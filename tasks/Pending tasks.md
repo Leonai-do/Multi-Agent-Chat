@@ -105,4 +105,4 @@ Virtualized message list: For long histories, use list virtualization to keep sc
 [ - ] 57- Add bounded concurrency for agent phases and batch state updates to reduce UI churn.
 [ - ] 58- Code-split heavy/optional views and libraries (e.g., collaboration trace, markdown parsing) for faster initial load.
 [ - ] 59- Document architecture and extension points (providers, tools, RAG, vision) to guide future modules.
-[ - ] 60- When the user selects one provider, the api key for that provider is requested, and saved in the local storage, and used for all the requests to that provider.
+[ - ] 60- When the user selects one provider, the api key for that provider is requested, and saved in the local storage, and used for all the requests to that provider. Each provider must have a different api key, and the user must be able to select the provider and enter the api key for that provider, with a box for each provider.

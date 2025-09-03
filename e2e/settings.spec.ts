@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const LS_TAVILY_KEY = 'tavily-api-key';
 
 test.describe('Settings modal', () => {
-  test('edit and persist Tavily and Groq keys and providers', async ({ page }) => {
+  test('edit and persist Tavily, Gemini and Groq keys and providers', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Open settings' }).click();
     const input = page.locator('#tavily-api-key');
@@ -15,6 +15,11 @@ test.describe('Settings modal', () => {
     await expect(groq).toBeVisible();
     const groqKey = 'test-groq-key-456';
     await groq.fill(groqKey);
+    // Gemini key
+    const gemini = page.locator('#gemini-api-key');
+    await expect(gemini).toBeVisible();
+    const geminiKey = 'test-gemini-key-789';
+    await gemini.fill(geminiKey);
 
     // Providers
     const globalProvider = page.getByLabel('Global provider select');
@@ -32,6 +37,8 @@ test.describe('Settings modal', () => {
     expect(stored).toBe(key);
     const storedGroq = await page.evaluate((k) => localStorage.getItem(k), 'groq-api-key');
     expect(storedGroq).toBe(groqKey);
+    const storedGem = await page.evaluate((k) => localStorage.getItem(k), 'gemini-api-key');
+    expect(storedGem).toBe(geminiKey);
     const storedGlobalProvider = await page.evaluate((k) => localStorage.getItem(k), 'provider-global');
     expect(storedGlobalProvider).toBe('groq');
   });

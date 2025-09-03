@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect, FC } from 'react';
 import { INITIAL_SYSTEM_INSTRUCTION } from '../constants';
-import { LS_GROQ_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT } from '../config';
+import { LS_GROQ_KEY, LS_GEMINI_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT } from '../config';
 import { fetchModelsForProvider, type ModelOption } from '../llm/models';
 
 /**
@@ -38,6 +38,8 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
   const [currentTavilyKey, setCurrentTavilyKey] = useState(tavilyApiKey);
   // Local state for the Groq API key.
   const [currentGroqKey, setCurrentGroqKey] = useState<string>('');
+  // Local state for the Gemini API key.
+  const [currentGeminiKey, setCurrentGeminiKey] = useState<string>('');
   // Provider selections (global + per-agent overrides)
   const [globalProvider, setGlobalProvider] = useState<'gemini' | 'groq'>('gemini');
   const [perAgentProviders, setPerAgentProviders] = useState<Array<'gemini' | 'groq'>>([]);
@@ -55,6 +57,8 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
       try {
         const gk = localStorage.getItem(LS_GROQ_KEY) || '';
         setCurrentGroqKey(gk);
+        const gmk = localStorage.getItem(LS_GEMINI_KEY) || '';
+        setCurrentGeminiKey(gmk);
         const gp = (localStorage.getItem(LS_PROVIDER_GLOBAL) as 'gemini' | 'groq' | null) || 'gemini';
         setGlobalProvider(gp);
         const count = (instructions?.length || 4);
@@ -79,12 +83,12 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
           fetchAbortRef.current?.abort();
           fetchAbortRef.current = new AbortController();
           const signal = fetchAbortRef.current.signal;
-          const [gemini, groq] = await Promise.all([
-            fetchModelsForProvider('gemini', undefined, signal).catch(() => []),
-            fetchModelsForProvider('groq', undefined, signal).catch(() => []),
-          ]);
-          setModelsByProvider({ gemini, groq });
-        } catch {}
+        const [gemini, groq] = await Promise.all([
+          fetchModelsForProvider('gemini', currentGeminiKey || undefined, signal).catch(() => []),
+          fetchModelsForProvider('groq', currentGroqKey || undefined, signal).catch(() => []),
+        ]);
+        setModelsByProvider({ gemini, groq });
+      } catch {}
       })();
     }
   }, [instructions, tavilyApiKey, isOpen]);
@@ -111,6 +115,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
     onSaveTavilyApiKey(currentTavilyKey);
     try {
       localStorage.setItem(LS_GROQ_KEY, currentGroqKey);
+      localStorage.setItem(LS_GEMINI_KEY, currentGeminiKey);
       localStorage.setItem(LS_PROVIDER_GLOBAL, globalProvider);
       localStorage.setItem(LS_PROVIDER_PER_AGENT, JSON.stringify(perAgentProviders));
       localStorage.setItem(LS_MODEL_GLOBAL, globalModel);
@@ -218,6 +223,20 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
                 onChange={(e) => setCurrentTavilyKey(e.target.value)}
                 placeholder="Enter your Tavily API Key"
                 aria-label="Tavily API Key input"
+             />
+          </div>
+
+          <div className="api-key-editor">
+             <label htmlFor="gemini-api-key" className="api-key-editor__label">Gemini API Key</label>
+             <p>Used when selecting Gemini provider. Generate one in Google AI Studio. For production, prefer a backend proxy.</p>
+             <input
+                id="gemini-api-key"
+                type="password"
+                className="api-key-editor__input"
+                value={currentGeminiKey}
+                onChange={(e) => setCurrentGeminiKey(e.target.value)}
+                placeholder="Enter your Gemini API Key"
+                aria-label="Gemini API Key input"
              />
           </div>
 
