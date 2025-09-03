@@ -14,6 +14,8 @@ export const LS_TAVILY_KEY = 'tavily-api-key';
 export const LS_GROQ_KEY = 'groq-api-key';
 export const LS_PROVIDER_GLOBAL = 'provider-global';
 export const LS_PROVIDER_PER_AGENT = 'provider-per-agent';
+export const LS_MODEL_GLOBAL = 'model-global';
+export const LS_MODEL_PER_AGENT = 'model-per-agent';
 
 /**
  * Resolve Gemini API key from environment.
@@ -32,4 +34,3 @@ export const getGroqApiKey = (): string | undefined => {
   const nodeKey = (globalThis as any)?.process?.env?.GROQ_API_KEY as string | undefined;
   return viteKey || nodeKey;
 };
-

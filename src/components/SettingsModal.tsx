@@ -3,7 +3,8 @@
  */
 import React, { useState, useEffect, FC } from 'react';
 import { INITIAL_SYSTEM_INSTRUCTION } from '../constants';
-import { LS_GROQ_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT } from '../config';
+import { LS_GROQ_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT } from '../config';
+import { fetchModelsForProvider, type ModelOption } from '../llm/models';
 
 /**
  * Props for the SettingsModal component.
@@ -40,6 +41,10 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
   // Provider selections (global + per-agent overrides)
   const [globalProvider, setGlobalProvider] = useState<'gemini' | 'groq'>('gemini');
   const [perAgentProviders, setPerAgentProviders] = useState<Array<'gemini' | 'groq'>>([]);
+  const [globalModel, setGlobalModel] = useState<string>('');
+  const [perAgentModels, setPerAgentModels] = useState<string[]>([]);
+  const [modelsByProvider, setModelsByProvider] = useState<Record<'gemini'|'groq', ModelOption[]>>({ gemini: [], groq: [] });
+  const fetchAbortRef = React.useRef<AbortController | null>(null);
   
   // Effect to sync local state with props when the modal is opened.
   useEffect(() => {
@@ -57,10 +62,30 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
         const parsed = paRaw ? (JSON.parse(paRaw) as Array<'gemini' | 'groq'>) : Array(count).fill(gp);
         const normalized = Array(count).fill('gemini').map((_, i) => parsed[i] || gp);
         setPerAgentProviders(normalized);
+        // models
+        const gm = localStorage.getItem(LS_MODEL_GLOBAL) || '';
+        setGlobalModel(gm);
+        const pamRaw = localStorage.getItem(LS_MODEL_PER_AGENT);
+        const pamParsed = pamRaw ? (JSON.parse(pamRaw) as string[]) : Array(count).fill(gm);
+        setPerAgentModels(Array(count).fill('').map((_, i) => pamParsed[i] || gm));
       } catch {
         const count = (instructions?.length || 4);
         setPerAgentProviders(Array(count).fill('gemini'));
+        setPerAgentModels(Array(count).fill(''));
       }
+      // Fetch models for current provider(s)
+      (async () => {
+        try {
+          fetchAbortRef.current?.abort();
+          fetchAbortRef.current = new AbortController();
+          const signal = fetchAbortRef.current.signal;
+          const [gemini, groq] = await Promise.all([
+            fetchModelsForProvider('gemini', undefined, signal).catch(() => []),
+            fetchModelsForProvider('groq', undefined, signal).catch(() => []),
+          ]);
+          setModelsByProvider({ gemini, groq });
+        } catch {}
+      })();
     }
   }, [instructions, tavilyApiKey, isOpen]);
   
@@ -88,6 +113,8 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
       localStorage.setItem(LS_GROQ_KEY, currentGroqKey);
       localStorage.setItem(LS_PROVIDER_GLOBAL, globalProvider);
       localStorage.setItem(LS_PROVIDER_PER_AGENT, JSON.stringify(perAgentProviders));
+      localStorage.setItem(LS_MODEL_GLOBAL, globalModel);
+      localStorage.setItem(LS_MODEL_PER_AGENT, JSON.stringify(perAgentModels));
     } catch {}
     onClose();
   };
@@ -116,24 +143,50 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
                   const val = (e.target.value as 'gemini' | 'groq');
                   setGlobalProvider(val);
                   setPerAgentProviders(prev => prev.map(() => val));
+                  // Reset models to empty until user selects
+                  setGlobalModel('');
+                  setPerAgentModels(prev => prev.map(() => ''));
                 }} style={{ marginLeft: '0.5rem' }} aria-label="Global provider select">
                   <option value="gemini">Gemini</option>
                   <option value="groq">Groq</option>
                 </select>
               </label>
+              <label>
+                Global Model
+                <select value={globalModel} onChange={(e) => setGlobalModel(e.target.value)} style={{ marginLeft: '0.5rem' }} aria-label="Global model select">
+                  <option value="" disabled>(Select model)</option>
+                  {(modelsByProvider[globalProvider] || []).map(m => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div style={{ marginTop: '0.5rem' }}>
               {perAgentProviders.map((p, i) => (
-                <label key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginRight: '0.75rem', marginBottom: '0.5rem' }}>
-                  Agent {i + 1}
-                  <select value={p} onChange={(e) => {
-                    const v = (e.target.value as 'gemini' | 'groq');
-                    setPerAgentProviders(prev => prev.map((x, idx) => idx === i ? v : x));
-                  }} aria-label={`Provider for Agent ${i + 1}`}>
-                    <option value="gemini">Gemini</option>
-                    <option value="groq">Groq</option>
-                  </select>
-                </label>
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginRight: '0.75rem', marginBottom: '0.5rem' }}>
+                  <label aria-label={`Provider for Agent ${i + 1}`}>
+                    Agent {i + 1}
+                    <select value={p} onChange={(e) => {
+                      const v = (e.target.value as 'gemini' | 'groq');
+                      setPerAgentProviders(prev => prev.map((x, idx) => idx === i ? v : x));
+                      setPerAgentModels(prev => prev.map((x, idx) => idx === i ? '' : x));
+                    }}>
+                      <option value="gemini">Gemini</option>
+                      <option value="groq">Groq</option>
+                    </select>
+                  </label>
+                  <label aria-label={`Model for Agent ${i + 1}`}>
+                    <select value={perAgentModels[i] || ''} onChange={(e) => {
+                      const val = e.target.value;
+                      setPerAgentModels(prev => prev.map((x, idx) => idx === i ? val : x));
+                    }}>
+                      <option value="" disabled>(Model)</option>
+                      {(modelsByProvider[perAgentProviders[i]] || []).map(m => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                </span>
               ))}
             </div>
           </div>
