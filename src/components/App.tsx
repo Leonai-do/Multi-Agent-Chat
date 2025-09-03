@@ -116,6 +116,9 @@ const App: FC = () => {
    * @param {boolean} isNewChat - Flag indicating if this is the first message in a new chat (for title generation).
    */
   const runAgentCollaboration = async (prompt: string, chatId: string, isNewChat: boolean) => {
+    // Begin a new generation run and create an abort signal
+    generationControllerRef.current.start();
+    const signal = generationControllerRef.current.signal;
     setIsLoading(true);
     setShowCollaboration(true);
     setLoadingMessage('');
@@ -158,9 +161,16 @@ const App: FC = () => {
         }
       } catch (e: any) {
           console.error("Failed to fetch from Tavily API", e);
-          const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: `Sorry, I couldn't search the web. ${e.message}` }] };
-          setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
+          if (e?.name === 'AbortError' || signal.aborted) {
+            // Silent cancel
+          } else {
+            const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: `Sorry, I couldn't search the web. ${e.message}` }] };
+            setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
+          }
           setIsLoading(false);
+          setCurrentCollaborationState([]);
+          setLoadingMessage('');
+          generationControllerRef.current.finish();
           return;
       }
     }
@@ -174,6 +184,10 @@ const App: FC = () => {
     if (!ai) {
         console.error('AI client is not initialized.');
         setIsLoading(false);
+        setCurrentCollaborationState([]);
+        setLoadingMessage('');
+        // Ensure controller is finalized even on early return
+        generationControllerRef.current.finish();
         return;
     }
       
