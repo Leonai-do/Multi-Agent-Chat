@@ -3,6 +3,7 @@
  */
 import React, { useState, useEffect, FC } from 'react';
 import { INITIAL_SYSTEM_INSTRUCTION } from '../constants';
+import { LS_GROQ_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT } from '../config';
 
 /**
  * Props for the SettingsModal component.
@@ -34,12 +35,32 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
   const [currentInstructions, setCurrentInstructions] = useState(instructions);
   // Local state for the Tavily API key.
   const [currentTavilyKey, setCurrentTavilyKey] = useState(tavilyApiKey);
+  // Local state for the Groq API key.
+  const [currentGroqKey, setCurrentGroqKey] = useState<string>('');
+  // Provider selections (global + per-agent overrides)
+  const [globalProvider, setGlobalProvider] = useState<'gemini' | 'groq'>('gemini');
+  const [perAgentProviders, setPerAgentProviders] = useState<Array<'gemini' | 'groq'>>([]);
   
   // Effect to sync local state with props when the modal is opened.
   useEffect(() => {
     if (isOpen) {
       setCurrentInstructions(instructions);
       setCurrentTavilyKey(tavilyApiKey);
+      // Load groq key and provider selections from LS
+      try {
+        const gk = localStorage.getItem(LS_GROQ_KEY) || '';
+        setCurrentGroqKey(gk);
+        const gp = (localStorage.getItem(LS_PROVIDER_GLOBAL) as 'gemini' | 'groq' | null) || 'gemini';
+        setGlobalProvider(gp);
+        const count = (instructions?.length || 4);
+        const paRaw = localStorage.getItem(LS_PROVIDER_PER_AGENT);
+        const parsed = paRaw ? (JSON.parse(paRaw) as Array<'gemini' | 'groq'>) : Array(count).fill(gp);
+        const normalized = Array(count).fill('gemini').map((_, i) => parsed[i] || gp);
+        setPerAgentProviders(normalized);
+      } catch {
+        const count = (instructions?.length || 4);
+        setPerAgentProviders(Array(count).fill('gemini'));
+      }
     }
   }, [instructions, tavilyApiKey, isOpen]);
   
@@ -63,6 +84,11 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
   const handleSave = () => {
     onSave(currentInstructions);
     onSaveTavilyApiKey(currentTavilyKey);
+    try {
+      localStorage.setItem(LS_GROQ_KEY, currentGroqKey);
+      localStorage.setItem(LS_PROVIDER_GLOBAL, globalProvider);
+      localStorage.setItem(LS_PROVIDER_PER_AGENT, JSON.stringify(perAgentProviders));
+    } catch {}
     onClose();
   };
   
@@ -81,6 +107,36 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
           <button onClick={onClose} className="modal__close-button" aria-label="Close settings">&times;</button>
         </div>
         <div className="modal__body">
+          <div className="providers-editor" style={{ marginBottom: '1rem' }}>
+            <h3 style={{ margin: '0 0 0.5rem' }}>Providers</h3>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label>
+                Global Provider
+                <select value={globalProvider} onChange={(e) => {
+                  const val = (e.target.value as 'gemini' | 'groq');
+                  setGlobalProvider(val);
+                  setPerAgentProviders(prev => prev.map(() => val));
+                }} style={{ marginLeft: '0.5rem' }} aria-label="Global provider select">
+                  <option value="gemini">Gemini</option>
+                  <option value="groq">Groq</option>
+                </select>
+              </label>
+            </div>
+            <div style={{ marginTop: '0.5rem' }}>
+              {perAgentProviders.map((p, i) => (
+                <label key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginRight: '0.75rem', marginBottom: '0.5rem' }}>
+                  Agent {i + 1}
+                  <select value={p} onChange={(e) => {
+                    const v = (e.target.value as 'gemini' | 'groq');
+                    setPerAgentProviders(prev => prev.map((x, idx) => idx === i ? v : x));
+                  }} aria-label={`Provider for Agent ${i + 1}`}>
+                    <option value="gemini">Gemini</option>
+                    <option value="groq">Groq</option>
+                  </select>
+                </label>
+              ))}
+            </div>
+          </div>
           <div>
             <p>Customize the core behavior for each agent. This instruction is used for their initial response.</p>
             {currentInstructions.map((inst, index) => (
@@ -109,6 +165,20 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
                 onChange={(e) => setCurrentTavilyKey(e.target.value)}
                 placeholder="Enter your Tavily API Key"
                 aria-label="Tavily API Key input"
+             />
+          </div>
+
+          <div className="api-key-editor">
+             <label htmlFor="groq-api-key" className="api-key-editor__label">Groq API Key</label>
+             <p>Used when selecting Groq as provider. For production, prefer a backend proxy to protect keys.</p>
+             <input
+                id="groq-api-key"
+                type="password"
+                className="api-key-editor__input"
+                value={currentGroqKey}
+                onChange={(e) => setCurrentGroqKey(e.target.value)}
+                placeholder="Enter your Groq API Key"
+                aria-label="Groq API Key input"
              />
           </div>
 
