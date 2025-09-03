@@ -66,7 +66,6 @@ const App: FC = () => {
   useEffect(() => {
     try {
       localStorage.setItem('multi-agent-chats', JSON.stringify(chats));
-    // FIX: Added curly braces to the catch block to fix a syntax error that was causing all subsequent functions to be out of scope.
     } catch (error) {
       console.error("Failed to save chats to localStorage", error);
     }
@@ -241,7 +240,7 @@ const App: FC = () => {
   return (
     <div className="app-wrapper">
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} instructions={agentInstructions} onSave={setAgentInstructions} />
-      <div className={`sidebar ${isSidebarOpen ? "open" : ''}`}>
+      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <Sidebar chats={chats} activeChatId={activeChatId} onNewChat={handleNewChat} onSelectChat={handleSelectChat} onDeleteChat={handleDeleteChat} />
       </div>
       <ChatView 

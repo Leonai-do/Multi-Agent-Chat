@@ -3,7 +3,7 @@
  */
 
 /** The specific Gemini model used for all AI interactions. */
-export const MODEL_NAME = 'gemini-2.5-flash';
+export const MODEL_NAME = 'gemini-2.5-pro';
 
 /** System instruction for agents generating their first draft response. */
 export const INITIAL_SYSTEM_INSTRUCTION = "You are one of four collaborative agents. Your task is to provide an initial, concise, and factual response to the user's query. This is a first draft that your peers will critique and refine. Your work is internal and feeds into a final, synthesized answer.";

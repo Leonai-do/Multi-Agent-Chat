@@ -39,7 +39,7 @@ const Sidebar: FC<SidebarProps> = ({ chats, activeChatId, onNewChat, onSelectCha
         {chats.map(chat => (
           <li
             key={chat.id}
-            className={`chat-history-item ${activeChatId === chat.id ? "active" : ''}`}
+            className={`chat-history-item ${activeChatId === chat.id ? 'active' : ''}`}
             onClick={() => onSelectChat(chat.id)}
             title={chat.title}
           >

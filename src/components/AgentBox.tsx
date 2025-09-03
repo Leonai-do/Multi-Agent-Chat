@@ -42,6 +42,7 @@ export const AgentBox: FC<AgentBoxProps> = ({ agentId, status, response }) => (
             {status && <span className="agent-status-indicator">{status}</span>}
         </div>
         <div className="agent-box-content">
+            {/* FIX: Corrected the code component rendering in ReactMarkdown. The previous implementation was calling an undefined 'code' function. */}
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ pre: ({ children }) => <>{children}</>, code: ({ children }) => <code>{children}</code> }}>
                 {response || '...'}
             </ReactMarkdown>
@@ -71,8 +72,8 @@ export const TraceAgentBox: FC<TraceAgentBoxProps> = ({ agentId, initial, refine
             <div className="agent-box-header">
                 <span>Agent {agentId + 1}</span>
                 <div className="response-toggle-group" role="group" aria-label={`Toggle Agent ${agentId + 1} response`}>
-                    <button type="button" className={`response-toggle ${view === 'initial' ? "active" : ''}`} onClick={() => setView('initial')} disabled={!hasInitial} aria-pressed={view === 'initial'} aria-label="Show initial response">Initial</button>
-                    <button type="button" className={`response-toggle ${view === 'refined' ? "active" : ''}`} onClick={() => setView('refined')} disabled={!hasRefined} aria-pressed={view === 'refined'} aria-label="Show refined response">Refined</button>
+                    <button type="button" className={`response-toggle ${view === 'initial' ? 'active' : ''}`} onClick={() => setView('initial')} disabled={!hasInitial} aria-pressed={view === 'initial'} aria-label="Show initial response">Initial</button>
+                    <button type="button" className={`response-toggle ${view === 'refined' ? 'active' : ''}`} onClick={() => setView('refined')} disabled={!hasRefined} aria-pressed={view === 'refined'} aria-label="Show refined response">Refined</button>
                 </div>
             </div>
             <div className="agent-box-content">

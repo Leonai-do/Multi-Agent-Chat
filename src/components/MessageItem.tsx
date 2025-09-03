@@ -55,7 +55,7 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
 
   return (
     <>
-      <div className={`message-container ${message.collaborationTrace && isTraceVisible ? "trace-visible" : ''}`}>
+      <div className={`message-container ${message.collaborationTrace && isTraceVisible ? 'trace-visible' : ''}`}>
         <div className={`message-wrapper ${message.role}`}>
             <div className="message-actions">
             {message.role === 'user' && (
@@ -75,7 +75,7 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
                     // Custom component for code blocks to add copy functionality
                     code({ children, className }) {
                     const match = /language-(\w+)/.exec(className || '');
-                    return match ? <CodeBlock>{children}</CodeBlock> : <code>{children}</code>;
+                    return match ? <CodeBlock>{children}</CodeBlock> : <code className={className}>{children}</code>;
                     },
                 }}
                 >
@@ -106,7 +106,7 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
 
         {/* The collaboration trace view, visibility controlled by state */}
         {message.collaborationTrace && (
-            <div className={`collaboration-trace-wrapper ${isTraceVisible ? "visible" : ''}`}>
+            <div className={`collaboration-trace-wrapper ${isTraceVisible ? 'visible' : ''}`}>
                 <div className="collaboration-trace">
                     <CollaborationTraceView trace={message.collaborationTrace} className="agent-grid" />
                 </div>

@@ -43,7 +43,7 @@ const ThemeSwitcher: FC = () => {
       {isOpen && (
         <div className="theme-dropdown">
           {themes.map(t => (
-            <button key={t.id} className={`theme-item ${currentTheme === t.id ? "active" : ''}`} onClick={() => { setTheme(t.id); setIsOpen(false); }}>
+            <button key={t.id} className={`theme-item ${currentTheme === t.id ? 'active' : ''}`} onClick={() => { setTheme(t.id); setIsOpen(false); }}>
               {t.icon}<span>{t.name}</span>
             </button>
           ))}

@@ -1,4 +1,11 @@
-
+/**
+ * =============================================================================
+ * GLOBAL STYLES & CSS VARIABLES
+ * =============================================================================
+ * This section contains all global CSS styles and variables for the application.
+ * It includes theme definitions (light and dark), base element styling,
+ * and themed scrollbar designs.
+ */
 
 *,
 *::before,
@@ -6,6 +13,7 @@
   box-sizing: border-box;
 }
 
+/* Light theme color variables */
 :root {
   --background-color: #f0f4f9;
   --app-background: #ffffff;
@@ -58,6 +66,7 @@
   --scrollbar-thumb-hover-bg: #a8a8a8;
 }
 
+/* Dark theme color variables */
 html[data-theme='dark'] {
   --background-color: #1a1c2c;
   --app-background: #24273a;
@@ -104,7 +113,7 @@ html[data-theme='dark'] {
   --scrollbar-thumb-hover-bg: #5a5d80;
 }
 
-/* --- Base & Layout --- */
+/* Base layout and font styles */
 html, body, #root {
   height: 100%;
   width: 100%;
@@ -119,13 +128,7 @@ body {
   transition: background-color 0.3s ease;
 }
 
-.app-wrapper {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-}
-
-/* --- Themed Scrollbars --- */
+/* Themed Scrollbar Styles */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb-bg) var(--scrollbar-track-bg);
@@ -146,7 +149,32 @@ body {
   background-color: var(--scrollbar-thumb-hover-bg);
 }
 
-/* --- Sidebar --- */
+
+/**
+ * =============================================================================
+ * APP & LAYOUT
+ * =============================================================================
+ * Styles for the main App component wrapper and responsive sidebar layout.
+ */
+.app-wrapper {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+@media (max-width: 768px) {
+  .app-wrapper {
+    overflow-x: hidden;
+    position: relative;
+  }
+}
+
+/**
+ * =============================================================================
+ * SIDEBAR
+ * =============================================================================
+ * Styles for the chat history sidebar.
+ */
 .sidebar {
   width: 260px;
   min-width: 200px;
@@ -200,10 +228,13 @@ body {
   cursor: pointer;
   margin-bottom: 0.25rem;
   transition: background-color 0.2s, color 0.2s;
+  gap: 0.5rem;
+}
+.chat-history-item .chat-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  gap: 0.5rem;
+  flex-grow: 1;
 }
 .chat-history-item:hover {
   background-color: var(--button-hover-bg-light);
@@ -240,10 +271,34 @@ body {
 .delete-chat-button:hover {
   background-color: var(--button-secondary-hover-bg);
 }
-.delete-chat-button svg { width: 16px; height: 16px; }
+.delete-chat-button svg {
+  width: 16px;
+  height: 16px;
+}
 
+@media (max-width: 768px) {
+  .sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+    margin-left: -270px; /* Hide off-screen */
+    border-right-width: 2px;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+    resize: none;
+  }
+  .sidebar.open {
+    margin-left: 0; /* Slide in */
+  }
+}
 
-/* --- Chat Container --- */
+/**
+ * =============================================================================
+ * CHAT VIEW
+ * =============================================================================
+ * Styles for the main chat container, header, message list, and input area.
+ */
 .chat-container {
   flex-grow: 1;
   background-color: var(--app-background);
@@ -252,23 +307,9 @@ body {
   overflow: hidden;
   min-width: 0; /* Prevents flexbox overflow */
 }
-.welcome-screen {
-  flex-grow: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  color: var(--secondary-text-color);
-}
-.welcome-screen h2 {
-  font-size: 1.5rem;
-  font-weight: 500;
-}
-.welcome-screen p {
-  margin-top: 0.5rem;
-}
 
-header {
+/* --- Header --- */
+.header {
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--header-border);
   background-color: var(--app-background);
@@ -277,7 +318,7 @@ header {
   align-items: center;
   flex-shrink: 0;
 }
-header h1 {
+.header h1 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 500;
@@ -288,7 +329,7 @@ header h1 {
   align-items: center;
   gap: 0.5rem;
 }
-.menu-button, .settings-button, .theme-button {
+.menu-button, .settings-button {
   background: none;
   border: none;
   cursor: pointer;
@@ -300,22 +341,47 @@ header h1 {
   transition: background-color 0.2s;
   color: var(--secondary-text-color);
 }
-.menu-button { display: none; }
-.settings-button:hover, .theme-button:hover, .menu-button:hover {
+.menu-button {
+  display: none;
+}
+.settings-button:hover, .menu-button:hover {
   background-color: var(--button-hover-bg-light);
 }
-.settings-button svg, .theme-button svg, .menu-button svg {
+.settings-button svg, .menu-button svg {
   width: 24px;
   height: 24px;
 }
-.theme-switcher { position: relative; }
-.theme-dropdown { position: absolute; top: calc(100% + 8px); right: 0; background-color: var(--app-background); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px var(--shadow-color); z-index: 10; width: 150px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem; }
-.theme-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 6px; background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 0.9rem; text-align: left; transition: background-color 0.2s; }
-.theme-item:hover { background-color: var(--button-hover-bg-light); }
-.theme-item.active { background-color: var(--user-message-bg); color: var(--user-message-text); font-weight: 500; }
-.theme-item svg { width: 18px; height: 18px; }
+@media (max-width: 768px) {
+  .menu-button {
+    display: flex;
+  }
+  .header h1 {
+    font-size: 1.1rem;
+  }
+  .header-actions {
+    gap: 0;
+  }
+}
 
+/* --- Welcome Screen --- */
+.welcome-screen {
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: var(--secondary-text-color);
+  padding: 1.5rem;
+}
+.welcome-screen h2 {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+.welcome-screen p {
+  margin-top: 0.5rem;
+}
 
+/* --- Message List --- */
 .message-list {
   flex-grow: 1;
   overflow-y: auto;
@@ -323,6 +389,141 @@ header h1 {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+}
+
+/* --- Input Area --- */
+.input-area {
+  display: flex;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--header-border);
+  background-color: var(--app-background);
+}
+.input-area input {
+  flex-grow: 1;
+  border: 1px solid var(--input-border);
+  background-color: var(--input-background);
+  color: var(--text-color);
+  border-radius: 2rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  font-family: inherit;
+  margin-right: 0.75rem;
+  transition: box-shadow 0.2s ease-in-out;
+}
+.input-area input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--input-focus-shadow);
+}
+.input-area button {
+  border: none;
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background-color 0.2s ease-in-out;
+  flex-shrink: 0;
+}
+.input-area button:hover:not(:disabled) {
+  background-color: var(--button-hover-bg);
+}
+.input-area button:disabled {
+  background-color: var(--button-disabled-bg);
+  cursor: not-allowed;
+}
+.input-area button svg {
+  width: 24px;
+  height: 24px;
+}
+
+/**
+ * =============================================================================
+ * THEME SWITCHER
+ * =============================================================================
+ * Styles for the theme selection dropdown.
+ */
+.theme-switcher {
+  position: relative;
+}
+.theme-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  color: var(--secondary-text-color);
+}
+.theme-button:hover {
+  background-color: var(--button-hover-bg-light);
+}
+.theme-button svg {
+  width: 24px;
+  height: 24px;
+}
+.theme-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background-color: var(--app-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  z-index: 10;
+  width: 150px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.theme-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: left;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+.theme-item:hover {
+  background-color: var(--button-hover-bg-light);
+}
+.theme-item.active {
+  background-color: var(--user-message-bg);
+  color: var(--user-message-text);
+  font-weight: 500;
+}
+.theme-item svg {
+  width: 18px;
+  height: 18px;
+}
+
+/**
+ * =============================================================================
+ * MESSAGE ITEM
+ * =============================================================================
+ * Styles for individual chat bubbles (user and model), actions, and the
+ * collaboration trace view.
+ */
+.message-container {
+  display: flex;
+  flex-direction: column;
+}
+.message-container.trace-visible {
+  width: 100%;
 }
 .message-wrapper {
   display: flex;
@@ -421,64 +622,84 @@ header h1 {
   border-radius: 6px;
   transition: background-color 0.2s, border-color 0.2s;
 }
-.view-toggle:hover { background-color: var(--button-hover-bg-light); border-color: var(--secondary-text-color); }
-.view-toggle svg { width: 14px; height: 14px; }
+.view-toggle:hover {
+  background-color: var(--button-hover-bg-light);
+  border-color: var(--secondary-text-color);
+}
+.view-toggle svg {
+  width: 14px;
+  height: 14px;
+}
 .raw-text-view {
-  background-color: var(--pre-bg); 
-  padding: 0.75rem; 
-  border-radius: 8px; 
-  white-space: pre-wrap; 
+  background-color: var(--pre-bg);
+  padding: 0.75rem;
+  border-radius: 8px;
+  white-space: pre-wrap;
   overflow-wrap: break-word;
-  font-family: 'Fira Code', 'Courier New', Courier, monospace; 
-  font-size: 0.9em; 
-  color: var(--code-text-color); 
+  font-family: 'Fira Code', 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+  color: var(--code-text-color);
   margin: 0;
 }
-.raw-text-view code { padding: 0; background: none; }
+.raw-text-view code {
+  padding: 0;
+  background: none;
+}
 
+.collaboration-toggle-history {
+  background: none;
+  border: none;
+  color: var(--secondary-text-color);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+.collaboration-toggle-history:hover {
+  background-color: var(--button-hover-bg-light);
+}
+.collaboration-toggle-history svg {
+  width: 16px;
+  height: 16px;
+}
 
-/* --- Agent Workspace & Collaboration --- */
-.agent-workspace { padding: 1rem; background-color: var(--model-message-bg); border-radius: 1.5rem; border-bottom-left-radius: 0.5rem; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem; }
-.agent-workspace-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
-.agent-workspace-title { font-weight: 500; color: var(--text-color); font-size: 1rem; }
-.agent-grid-container { display: grid; max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out; }
-.agent-grid-container.visible { max-height: 1000px; opacity: 1; }
-.agent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
-.agent-box { background-color: var(--app-background); border: 1px solid var(--border-color); border-radius: 0.75rem; display: flex; flex-direction: column; min-height: 100px; transition: all 0.3s ease; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-html[data-theme='dark'] .agent-box { box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-.agent-box-color-1 { --agent-color: var(--agent-1-color); }
-.agent-box-color-2 { --agent-color: var(--agent-2-color); }
-.agent-box-color-3 { --agent-color: var(--agent-3-color); }
-.agent-box-color-4 { --agent-color: var(--agent-4-color); }
-.agent-box-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 700; padding: 0.5rem 0.75rem; background-color: var(--agent-color); color: #fff; }
-.agent-box-color-3 .agent-box-header { color: #202124; }
-.response-toggle-group { display: flex; gap: 0.25rem; margin-left: auto; }
-.response-toggle { appearance: none; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.5); color: #fff; cursor: pointer; font-size: 0.75rem; font-weight: 600; padding: 0.15rem 0.6rem; border-radius: 9999px; transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
-.response-toggle:hover:not(:disabled) { background-color: rgba(255, 255, 255, 0.3); }
-.response-toggle.active { background-color: #fff; color: var(--agent-color); border-color: #fff; }
-.response-toggle:disabled { opacity: 0.6; cursor: not-allowed; }
-.agent-box-color-3 .response-toggle { background: rgba(0, 0, 0, 0.08); border-color: rgba(0, 0, 0, 0.2); color: #3c4043; }
-.agent-box-color-3 .response-toggle:hover:not(:disabled) { background-color: rgba(0, 0, 0, 0.15); }
-.agent-box-color-3 .response-toggle.active { background-color: #3c4043; color: #fff; border-color: #3c4043; }
-.agent-status-indicator { font-weight: 500; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 1rem; text-transform: capitalize; background-color: rgba(255,255,255, 0.25); color: #fff; }
-.agent-box-color-3 .agent-status-indicator { background-color: rgba(0,0,0,0.1); color: #202124; }
-.agent-box-content { flex-grow: 1; font-size: 0.9rem; line-height: 1.5; overflow-y: auto; max-height: 250px; color: var(--text-color); padding: 0.75rem; word-break: break-word; }
-.agent-box-content > div > *:first-child { margin-top: 0; }
-.agent-box-content > div > *:last-child { margin-bottom: 0; }
-.collaboration-toggle { background: none; border: 1px solid transparent; color: var(--secondary-text-color); cursor: pointer; font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; border-radius: 6px; transition: background-color 0.2s, border-color 0.2s; }
-.collaboration-toggle:hover { background-color: var(--button-hover-bg-light); }
-.collaboration-toggle svg { width: 18px; height: 18px; transition: transform 0.3s ease; }
-.collaboration-toggle svg.expanded { transform: rotate(180deg); }
-.collaboration-container { margin-top: 0.75rem; }
-.collaboration-toggle-history { background: none; border: none; color: var(--secondary-text-color); cursor: pointer; font-family: inherit; font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem; border-radius: 6px; transition: background-color 0.2s; }
-.collaboration-toggle-history:hover { background-color: var(--button-hover-bg-light); }
-.collaboration-toggle-history svg { width: 16px; height: 16px; }
-.collaboration-trace-wrapper { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.4s ease-in-out; }
-.collaboration-trace-wrapper.visible { grid-template-rows: 1fr; }
-.collaboration-trace { overflow: hidden; padding-top: 1rem; }
+.collaboration-trace-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s ease-in-out;
+  padding-left: 48px; /* Approx icon width + gap */
+  padding-right: 48px;
+}
+.collaboration-trace-wrapper.visible {
+  grid-template-rows: 1fr;
+}
+.collaboration-trace {
+  overflow: hidden;
+  padding-top: 1rem;
+}
 
+@media (max-width: 768px) {
+  .message-wrapper .message-actions {
+    opacity: 0.6; /* Make actions always somewhat visible on mobile */
+  }
+  .collaboration-trace-wrapper {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
 
-/* --- Markdown & Code Blocks --- */
+/**
+ * =============================================================================
+ * MARKDOWN & CODE BLOCKS
+ * =============================================================================
+ * Styles for rendered Markdown content within messages, including code blocks.
+ */
 .message > div > *:first-child, .message > p:first-child { margin-top: 0; }
 .message > div > *:last-child, .message > p:last-child { margin-bottom: 0; }
 .message p { margin: 0 0 0.5rem 0; }
@@ -493,53 +714,387 @@ html[data-theme='dark'] .agent-box { box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 .message.user blockquote { border-left-color: rgba(255, 255, 255, 0.5); color: inherit; }
 .message a { color: var(--button-bg); text-decoration: underline; }
 .message.user a { color: #fff; font-weight: 600; text-decoration: underline; }
-.code-block-wrapper { position: relative; margin: 0.5rem 0; }
-.code-block-wrapper pre { margin: 0; padding-top: 2.5rem; }
-.copy-button { position: absolute; top: 0.5rem; right: 0.5rem; background-color: var(--copy-button-bg); color: var(--copy-button-text); border: 1px solid var(--copy-button-border); border-radius: 6px; padding: 0.25rem 0.6rem; font-family: inherit; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; transition: background-color 0.2s ease-in-out; z-index: 1; }
-.copy-button:hover { background-color: var(--copy-button-hover-bg); }
-.copy-button svg { width: 14px; height: 14px; }
+
+.code-block-wrapper {
+  position: relative;
+  margin: 0.5rem 0;
+}
+.code-block-wrapper pre {
+  margin: 0;
+  padding-top: 2.5rem; /* Space for the button */
+}
+.copy-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background-color: var(--copy-button-bg);
+  color: var(--copy-button-text);
+  border: 1px solid var(--copy-button-border);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background-color 0.2s ease-in-out;
+  z-index: 1;
+}
+.copy-button:hover {
+  background-color: var(--copy-button-hover-bg);
+}
+.copy-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/**
+ * =============================================================================
+ * AGENT WORKSPACE & COLLABORATION
+ * =============================================================================
+ * Styles for the live and historical agent collaboration views.
+ */
+.agent-workspace {
+  padding: 1rem;
+  background-color: var(--model-message-bg);
+  border-radius: 1.5rem;
+  border-bottom-left-radius: 0.5rem;
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.agent-workspace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.agent-workspace-title {
+  font-weight: 500;
+  color: var(--text-color);
+  font-size: 1rem;
+}
+.collaboration-toggle {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--secondary-text-color);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.collaboration-toggle:hover {
+  background-color: var(--button-hover-bg-light);
+}
+.collaboration-toggle svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease;
+}
+.collaboration-toggle svg.expanded {
+  transform: rotate(180deg);
+}
+
+.agent-grid-container {
+  display: grid;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+}
+.agent-grid-container.visible {
+  max-height: 1000px; /* Arbitrary large value */
+  opacity: 1;
+}
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+@media (max-width: 600px) {
+  .agent-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.agent-box {
+  background-color: var(--app-background);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+html[data-theme='dark'] .agent-box {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.agent-box-color-1 { --agent-color: var(--agent-1-color); }
+.agent-box-color-2 { --agent-color: var(--agent-2-color); }
+.agent-box-color-3 { --agent-color: var(--agent-3-color); }
+.agent-box-color-4 { --agent-color: var(--agent-4-color); }
+
+.agent-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--agent-color);
+  color: #fff;
+}
+.agent-box-color-3 .agent-box-header {
+  color: #202124;
+}
+.response-toggle-group {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+.response-toggle {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 9999px;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.response-toggle:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+.response-toggle.active {
+  background-color: #fff;
+  color: var(--agent-color);
+  border-color: #fff;
+}
+.response-toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.agent-box-color-3 .response-toggle {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #3c4043;
+}
+.agent-box-color-3 .response-toggle:hover:not(:disabled) {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+.agent-box-color-3 .response-toggle.active {
+  background-color: #3c4043;
+  color: #fff;
+  border-color: #3c4043;
+}
+.agent-status-indicator {
+  font-weight: 500;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 1rem;
+  text-transform: capitalize;
+  background-color: rgba(255,255,255, 0.25);
+  color: #fff;
+}
+.agent-box-color-3 .agent-status-indicator {
+  background-color: rgba(0,0,0,0.1);
+  color: #202124;
+}
+.agent-box-content {
+  flex-grow: 1;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-y: auto;
+  max-height: 250px;
+  color: var(--text-color);
+  padding: 0.75rem;
+  word-break: break-word;
+}
+.agent-box-content > div > *:first-child {
+  margin-top: 0;
+}
+.agent-box-content > div > *:last-child {
+  margin-bottom: 0;
+}
+.agent-box-content .placeholder {
+    color: var(--secondary-text-color);
+}
 
 
-/* --- Input Area --- */
-.input-area { display: flex; padding: 1rem 1.5rem; border-top: 1px solid var(--header-border); background-color: var(--app-background); }
-.input-area input { flex-grow: 1; border: 1px solid var(--input-border); background-color: var(--input-background); color: var(--text-color); border-radius: 2rem; padding: 0.75rem 1.25rem; font-size: 1rem; font-family: inherit; margin-right: 0.75rem; transition: box-shadow 0.2s ease-in-out; }
-.input-area input:focus { outline: none; box-shadow: 0 0 0 2px var(--input-focus-shadow); }
-.input-area button { border: none; background-color: var(--button-bg); color: var(--button-text); border-radius: 50%; width: 48px; height: 48px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: background-color 0.2s ease-in-out; flex-shrink: 0; }
-.input-area button:hover:not(:disabled) { background-color: var(--button-hover-bg); }
-.input-area button:disabled { background-color: var(--button-disabled-bg); cursor: not-allowed; }
-.input-area button svg { width: 24px; height: 24px; }
-
-/* --- Modals (General) --- */
-.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--overlay-bg); display: flex; justify-content: center; align-items: center; z-index: 1000; animation: fadeIn 0.3s ease; }
+/**
+ * =============================================================================
+ * MODALS (GENERAL & SPECIFIC)
+ * =============================================================================
+ * Styles for all modal dialogs, including settings and edit prompt.
+ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--overlay-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.modal-content { background-color: var(--app-background); border-radius: 1rem; box-shadow: 0 5px 25px var(--shadow-color); width: 90%; max-width: 650px; max-height: 90vh; display: flex; flex-direction: column; animation: slideIn 0.3s ease-out; }
+
+.modal-content {
+  background-color: var(--app-background);
+  border-radius: 1rem;
+  box-shadow: 0 5px 25px var(--shadow-color);
+  width: 90%;
+  max-width: 650px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.3s ease-out;
+}
 @keyframes slideIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid var(--header-border); }
-.modal-header h2 { margin: 0; font-size: 1.1rem; font-weight: 500; }
-.close-button { background: none; border: none; font-size: 1.75rem; line-height: 1; cursor: pointer; color: var(--secondary-text-color); padding: 0.25rem 0.5rem; }
-.modal-body { padding: 1.5rem; overflow-y: auto; }
-.modal-footer { display: flex; justify-content: flex-end; align-items: center; padding: 1rem 1.5rem; border-top: 1px solid var(--header-border); background-color: var(--modal-footer-bg); }
-.modal-actions { display: flex; gap: 0.75rem; }
-.button-primary, .button-secondary, .button-tertiary { border: 1px solid transparent; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-.button-primary { background-color: var(--button-bg); color: var(--button-text); }
-.button-primary:hover { background-color: var(--button-hover-bg); }
-.button-secondary { background-color: var(--button-secondary-bg); color: var(--button-secondary-text); border-color: var(--button-secondary-border); }
-.button-secondary:hover { background-color: var(--button-secondary-hover-bg); border-color: var(--button-secondary-hover-border); }
-.button-tertiary { background: none; color: var(--text-color); border: none; padding: 0.5rem 0.5rem; }
-.button-tertiary:hover { background-color: var(--button-hover-bg-light); }
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--header-border);
+}
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--secondary-text-color);
+  padding: 0.25rem 0.5rem;
+}
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--header-border);
+  background-color: var(--modal-footer-bg);
+  border-bottom-left-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+.button-primary, .button-secondary, .button-tertiary {
+  border: 1px solid transparent;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.button-primary {
+  background-color: var(--button-bg);
+  color: var(--button-text);
+}
+.button-primary:hover {
+  background-color: var(--button-hover-bg);
+}
+.button-secondary {
+  background-color: var(--button-secondary-bg);
+  color: var(--button-secondary-text);
+  border-color: var(--button-secondary-border);
+}
+.button-secondary:hover {
+  background-color: var(--button-secondary-hover-bg);
+  border-color: var(--button-secondary-hover-border);
+}
+.button-tertiary {
+  background: none;
+  color: var(--text-color);
+  border: none;
+  padding: 0.5rem 0.5rem;
+}
+.button-tertiary:hover {
+  background-color: var(--button-hover-bg-light);
+}
 
 /* --- Settings Modal --- */
-.settings-modal .modal-body { display: flex; flex-direction: column; gap: 1.5rem; }
-.settings-modal p { margin: 0 0 0.5rem; font-size: 0.9rem; color: var(--secondary-text-color); line-height: 1.5; }
-.settings-modal .modal-footer { justify-content: space-between; }
-.instruction-editor { display: flex; flex-direction: column; gap: 0.5rem; border-left: 4px solid; padding-left: 1rem; border-radius: 4px; }
+.settings-modal .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.settings-modal p {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: var(--secondary-text-color);
+  line-height: 1.5;
+}
+.settings-modal .modal-footer {
+  justify-content: space-between;
+}
+.instruction-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-left: 4px solid;
+  padding-left: 1rem;
+  border-radius: 4px;
+}
 .instruction-editor-color-1 { border-color: var(--agent-1-color); }
 .instruction-editor-color-2 { border-color: var(--agent-2-color); }
 .instruction-editor-color-3 { border-color: var(--agent-3-color); }
 .instruction-editor-color-4 { border-color: var(--agent-4-color); }
-.instruction-editor label { font-weight: 500; font-size: 0.9rem; color: var(--text-color); }
-.instruction-editor textarea { width: 100%; border: 1px solid var(--border-color); background-color: var(--input-background); color: var(--text-color); border-radius: 8px; padding: 0.75rem; font-family: inherit; font-size: 0.9rem; resize: vertical; min-height: 80px; transition: border-color 0.2s, box-shadow 0.2s; }
-.instruction-editor textarea:focus { outline: none; border-color: var(--input-focus-shadow); box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-shadow) 40%, transparent); }
+
+.instruction-editor label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+.instruction-editor textarea {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-background);
+  color: var(--text-color);
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.instruction-editor textarea:focus {
+  outline: none;
+  border-color: var(--input-focus-shadow);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-shadow) 40%, transparent);
+}
 
 /* --- Edit Prompt Modal --- */
 .edit-prompt-modal .modal-body textarea {
@@ -558,43 +1113,4 @@ html[data-theme='dark'] .agent-box { box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
   outline: none;
   border-color: var(--input-focus-shadow);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-shadow) 40%, transparent);
-}
-
-
-/* --- Responsive Breakpoints --- */
-@media (max-width: 768px) {
-  .app-wrapper {
-    overflow-x: hidden;
-    position: relative;
-  }
-  .sidebar {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 100;
-    margin-left: -270px;
-    border-right-width: 2px;
-    box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-    resize: none;
-  }
-  .sidebar.open {
-    margin-left: 0;
-  }
-  .menu-button {
-    display: flex;
-  }
-  .header h1 {
-    font-size: 1.1rem;
-  }
-  .header-actions {
-    gap: 0;
-  }
-  .message-wrapper .message-actions {
-    opacity: 0.6; /* Make actions always somewhat visible on mobile */
-  }
-}
-
-@media (max-width: 600px) {
-    .agent-grid { grid-template-columns: 1fr; }
 }
