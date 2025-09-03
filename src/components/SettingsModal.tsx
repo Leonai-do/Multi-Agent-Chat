@@ -209,58 +209,50 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
         </div>
         <div className="modal__body">
           <div className="providers-editor" style={{ marginBottom: '1rem' }}>
-            <h3 style={{ margin: '0 0 0.5rem' }}>Providers</h3>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <label>
-                Global Provider
-                <select value={globalProvider} onChange={(e) => {
+            <h3 className="providers-editor__title">Providers</h3>
+            <div className="form-row">
+              <span className="form-row__label">Global Provider</span>
+              <select className="select" value={globalProvider} onChange={(e) => {
                   const val = (e.target.value as 'gemini' | 'groq');
                   setGlobalProvider(val);
                   setPerAgentProviders(prev => prev.map(() => val));
                   // Reset models to empty until user selects
                   setGlobalModel('');
                   setPerAgentModels(prev => prev.map(() => ''));
-                }} style={{ marginLeft: '0.5rem' }} aria-label="Global provider select">
+                }} aria-label="Global provider select">
                   <option value="gemini">Gemini</option>
                   <option value="groq">Groq</option>
                 </select>
-              </label>
-              <label>
-                Global Model
-                <select value={globalModel} onChange={(e) => setGlobalModel(e.target.value)} style={{ marginLeft: '0.5rem' }} aria-label="Global model select">
+              <span className="form-row__label">Global Model</span>
+              <select className="select" value={globalModel} onChange={(e) => setGlobalModel(e.target.value)} aria-label="Global model select">
                   <option value="" disabled>(Select model)</option>
                   {(modelsByProvider[globalProvider] || []).map(m => (
                     <option key={m.id} value={m.id}>{m.label}</option>
                   ))}
                 </select>
-              </label>
             </div>
-            <div style={{ marginTop: '0.5rem' }}>
+            <div className="providers-grid" style={{ marginTop: '0.5rem' }}>
               {perAgentProviders.map((p, i) => (
-                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginRight: '0.75rem', marginBottom: '0.5rem' }}>
-                  <label aria-label={`Provider for Agent ${i + 1}`}>
-                    Agent {i + 1}
-                    <select value={p} onChange={(e) => {
+                <div key={i} className="agent-row">
+                  <div className="agent-row__label">Agent {i + 1}</div>
+                  <select className="select agent-row__provider" aria-label={`Provider for Agent ${i + 1}`} value={p} onChange={(e) => {
                       const v = (e.target.value as 'gemini' | 'groq');
                       setPerAgentProviders(prev => prev.map((x, idx) => idx === i ? v : x));
                       setPerAgentModels(prev => prev.map((x, idx) => idx === i ? '' : x));
                     }}>
-                      <option value="gemini">Gemini</option>
-                      <option value="groq">Groq</option>
-                    </select>
-                  </label>
-                  <label aria-label={`Model for Agent ${i + 1}`}>
-                    <select value={perAgentModels[i] || ''} onChange={(e) => {
+                    <option value="gemini">Gemini</option>
+                    <option value="groq">Groq</option>
+                  </select>
+                  <select className="select agent-row__model" aria-label={`Model for Agent ${i + 1}`} value={perAgentModels[i] || ''} onChange={(e) => {
                       const val = e.target.value;
                       setPerAgentModels(prev => prev.map((x, idx) => idx === i ? val : x));
                     }}>
-                      <option value="" disabled>(Model)</option>
-                      {(modelsByProvider[perAgentProviders[i]] || []).map(m => (
-                        <option key={m.id} value={m.id}>{m.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                </span>
+                    <option value="" disabled>(Model)</option>
+                    {(modelsByProvider[perAgentProviders[i]] || []).map(m => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
+                  </select>
+                </div>
               ))}
             </div>
           </div>
