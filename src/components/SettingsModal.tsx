@@ -47,6 +47,18 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
   const [perAgentModels, setPerAgentModels] = useState<string[]>([]);
   const [modelsByProvider, setModelsByProvider] = useState<Record<'gemini'|'groq', ModelOption[]>>({ gemini: [], groq: [] });
   const fetchAbortRef = React.useRef<AbortController | null>(null);
+  // Feedback messages (floating)
+  type Feedback = { id: number; type: 'success' | 'error' | 'info'; text: string };
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const addFeedback = (type: Feedback['type'], text: string) => {
+    const id = Date.now() + Math.floor(Math.random()*1000);
+    setFeedbacks((prev) => [...prev, { id, type, text }]);
+    // Auto-remove after 6s for info/success
+    if (type !== 'error') {
+      setTimeout(() => setFeedbacks((prev) => prev.filter(f => f.id !== id)), 6000);
+    }
+  };
+  const removeFeedback = (id: number) => setFeedbacks(prev => prev.filter(f => f.id !== id));
   
   // Effect to sync local state with props when the modal is opened.
   useEffect(() => {
@@ -83,15 +95,72 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
           fetchAbortRef.current?.abort();
           fetchAbortRef.current = new AbortController();
           const signal = fetchAbortRef.current.signal;
-        const [gemini, groq] = await Promise.all([
-          fetchModelsForProvider('gemini', currentGeminiKey || undefined, signal).catch(() => []),
-          fetchModelsForProvider('groq', currentGroqKey || undefined, signal).catch(() => []),
-        ]);
-        setModelsByProvider({ gemini, groq });
-      } catch {}
+          const [gemini, groq] = await Promise.all([
+            fetchModelsForProvider('gemini', currentGeminiKey || undefined, signal).catch(() => []),
+            fetchModelsForProvider('groq', currentGroqKey || undefined, signal).catch(() => []),
+          ]);
+          setModelsByProvider({ gemini, groq });
+        } catch {}
       })();
     }
   }, [instructions, tavilyApiKey, isOpen]);
+
+  // Handlers to save/test individual provider keys and refresh model lists
+  const handleSaveGeminiKey = async () => {
+    try {
+      localStorage.setItem(LS_GEMINI_KEY, currentGeminiKey);
+    } catch {}
+    addFeedback('info', 'Testing Gemini key and loading models...');
+    try {
+      fetchAbortRef.current?.abort();
+      fetchAbortRef.current = new AbortController();
+      const signal = fetchAbortRef.current.signal;
+      // Direct call to provide clearer error feedback
+      const url = `https://generativelanguage.googleapis.com/v1/models?key=${encodeURIComponent(currentGeminiKey)}`;
+      const resp = await fetch(url, { signal });
+      if (!resp.ok) {
+        const detail = await resp.text().catch(() => '');
+        addFeedback('error', `Gemini key failed (${resp.status} ${resp.statusText}). ${detail}`);
+        return;
+      }
+      // Also update state via unified util (which consolidates across endpoints)
+      const [gemini] = await Promise.all([
+        fetchModelsForProvider('gemini', currentGeminiKey, signal).catch(() => []),
+      ]);
+      setModelsByProvider((prev) => ({ ...prev, gemini }));
+      addFeedback('success', `Gemini key saved. Loaded ${gemini.length} models.`);
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+      addFeedback('error', `Gemini test failed: ${e?.message || e}`);
+    }
+  };
+
+  const handleSaveGroqKey = async () => {
+    try {
+      localStorage.setItem(LS_GROQ_KEY, currentGroqKey);
+    } catch {}
+    addFeedback('info', 'Testing Groq key and loading models...');
+    try {
+      fetchAbortRef.current?.abort();
+      fetchAbortRef.current = new AbortController();
+      const signal = fetchAbortRef.current.signal;
+      const resp = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { Authorization: `Bearer ${currentGroqKey}` },
+        signal,
+      });
+      if (!resp.ok) {
+        const detail = await resp.text().catch(() => '');
+        addFeedback('error', `Groq key failed (${resp.status} ${resp.statusText}). ${detail}`);
+        return;
+      }
+      const groq = await fetchModelsForProvider('groq', currentGroqKey, signal).catch(() => []);
+      setModelsByProvider((prev) => ({ ...prev, groq }));
+      addFeedback('success', `Groq key saved. Loaded ${groq.length} models.`);
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+      addFeedback('error', `Groq test failed: ${e?.message || e}`);
+    }
+  };
   
   // Don't render anything if the modal is not open.
   if (!isOpen) return null;
@@ -238,6 +307,9 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
                 placeholder="Enter your Gemini API Key"
                 aria-label="Gemini API Key input"
              />
+             <div style={{ marginTop: '0.5rem' }}>
+               <button className="button button--primary" onClick={handleSaveGeminiKey} aria-label="Save Gemini API key and fetch models">Save & Test Gemini Key</button>
+             </div>
           </div>
 
           <div className="api-key-editor">
@@ -252,6 +324,9 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
                 placeholder="Enter your Groq API Key"
                 aria-label="Groq API Key input"
              />
+             <div style={{ marginTop: '0.5rem' }}>
+               <button className="button button--primary" onClick={handleSaveGroqKey} aria-label="Save Groq API key and fetch models">Save & Test Groq Key</button>
+             </div>
           </div>
 
         </div>
@@ -262,6 +337,25 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
             <button onClick={handleSave} className="button button--primary">Save Changes</button>
           </div>
         </div>
+      </div>
+      {/* Floating feedback box */}
+      <div style={{ position: 'fixed', right: '1rem', bottom: '1rem', zIndex: 1000, maxWidth: '360px' }}>
+        {feedbacks.map(f => (
+          <div key={f.id} style={{
+            marginTop: '0.5rem',
+            padding: '0.5rem 0.75rem',
+            borderRadius: 8,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+            background: f.type === 'success' ? 'rgba(46, 204, 113, 0.12)' : f.type === 'error' ? 'rgba(231, 76, 60, 0.12)' : 'rgba(52, 152, 219, 0.12)',
+            color: f.type === 'success' ? '#2ecc71' : f.type === 'error' ? '#e74c3c' : '#3498db',
+            border: `1px solid ${f.type === 'success' ? '#2ecc71' : f.type === 'error' ? '#e74c3c' : '#3498db'}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+              <div style={{ fontSize: '0.9rem', lineHeight: 1.35 }}>{f.text}</div>
+              <button onClick={() => removeFeedback(f.id)} aria-label="Dismiss message" style={{ border: 'none', background: 'transparent', color: 'inherit', cursor: 'pointer', fontWeight: 700 }}>×</button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
