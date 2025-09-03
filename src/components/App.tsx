@@ -17,6 +17,26 @@ import { addLog, exportLogs } from '../state/logs';
 import GenerationController from '../state/generation';
 
 /**
+ * Sanitize and normalize a generated chat title to be short, plain text.
+ * - Remove common Markdown punctuation
+ * - Strip surrounding quotes
+ * - Limit to 5 words and 64 chars
+ */
+const sanitizeTitle = (t: string): string => {
+  try {
+    let s = (t || '').replace(/[`*_#>\[\]()]/g, '');
+    s = s.replace(/^\s*"+|"+\s*$/g, '');
+    s = s.replace(/\s+/g, ' ').trim();
+    if (!s) return 'New Chat';
+    s = s.split(' ').slice(0, 5).join(' ');
+    if (s.length > 64) s = s.slice(0, 64).trim();
+    return s;
+  } catch {
+    return 'New Chat';
+  }
+};
+
+/**
  * The main App component.
  * @returns {React.ReactElement} The rendered application.
  */
@@ -294,12 +314,13 @@ const App: FC = () => {
       // Add the final model message to the active chat
       setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, modelMessage] } : c));
 
-      // Step 4 (Optional): If it's a new chat, generate a title
+      // Step 4 (Optional): If it's a new chat, generate a short plain-text title
       if (isNewChat) {
-        const titlePrompt = `Based on the following interaction, create a short, concise title (max 5 words).\n\nUser: ${prompt}\n\nAssistant: ${finalText}`;
+        const titlePrompt = `Generate a very short, plain-text chat title for this conversation.\n\nRules:\n- Maximum 5 words\n- Plain text only (no markdown, no quotes)\n- If naturally appropriate, include at most one relevant emoji\n- Return only the title line\n\nConversation:\nUser: ${prompt}\nAssistant: ${finalText}`;
         try {
             const titleResponse = await ai.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: titlePrompt }] }] });
-            const newTitle = (titleResponse.text ?? 'Untitled Chat').replace(/"/g, '').trim();
+            const raw = (titleResponse.text ?? 'New Chat').trim();
+            const newTitle = sanitizeTitle(raw);
             setChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle } : c));
         } catch (e) {
             console.error("Failed to generate title", e);
