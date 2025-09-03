@@ -36,6 +36,10 @@ export const getGeminiApiKey = (): string | undefined => {
 
 /** Resolve Groq API key, same precedence as Gemini. */
 export const getGroqApiKey = (): string | undefined => {
+  try {
+    const ls = (globalThis as any)?.localStorage?.getItem?.(LS_GROQ_KEY) as string | null;
+    if (ls && ls.trim()) return ls;
+  } catch {}
   const viteKey = (import.meta as any)?.env?.VITE_GROQ_API_KEY as string | undefined;
   const nodeKey = (globalThis as any)?.process?.env?.GROQ_API_KEY as string | undefined;
   return viteKey || nodeKey;

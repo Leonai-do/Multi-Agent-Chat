@@ -11,7 +11,9 @@ import SettingsModal from './SettingsModal';
 import ChatView from './ChatView';
 import { MODEL_NAME, INITIAL_SYSTEM_INSTRUCTION, REFINEMENT_SYSTEM_INSTRUCTION, SYNTHESIZER_SYSTEM_INSTRUCTION } from '../constants';
 import type { Chat, Message, LiveAgentState, CollaborationTrace, Source } from '../types';
-import { LS_CHATS_KEY, LS_TAVILY_KEY, getGeminiApiKey } from '../config';
+import { LS_CHATS_KEY, LS_TAVILY_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, getGeminiApiKey, getGroqApiKey } from '../config';
+import { generateGroqTextViaREST } from '../llm/groqRest';
+import { addLog, exportLogs } from '../state/logs';
 import GenerationController from '../state/generation';
 
 /**
@@ -48,6 +50,15 @@ const App: FC = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   // State for the Tavily API key, managed in Settings
   const [tavilyApiKey, setTavilyApiKey] = useState<string>('');
+  // Floating notices for status/errors
+  type Notice = { id: number; type: 'success'|'error'|'info'; text: string };
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const pushNotice = (type: Notice['type'], text: string) => {
+    const id = Date.now() + Math.floor(Math.random()*1000);
+    setNotices(prev => [...prev, { id, type, text }]);
+    if (type !== 'error') setTimeout(() => setNotices(prev => prev.filter(n => n.id !== id)), 6000);
+  };
+  const dismissNotice = (id: number) => setNotices(prev => prev.filter(n => n.id !== id));
   // Controller that coordinates generation runs and cancellation
   const generationControllerRef = useRef<GenerationController>(new GenerationController());
 
@@ -125,6 +136,22 @@ const App: FC = () => {
 
     let webContext = '';
     let sources: Source[] = [];
+    // Load provider/model preferences
+    const count = 4;
+    let globalProvider: 'gemini'|'groq' = 'gemini';
+    let perAgentProviders: Array<'gemini'|'groq'> = Array(count).fill('gemini');
+    let globalModel: string | undefined = undefined;
+    let perAgentModels: string[] = Array(count).fill('');
+    try {
+      const gp = (localStorage.getItem(LS_PROVIDER_GLOBAL) as any) || 'gemini';
+      const pa = JSON.parse(localStorage.getItem(LS_PROVIDER_PER_AGENT) || '[]');
+      const gm = localStorage.getItem(LS_MODEL_GLOBAL) || '';
+      const pam = JSON.parse(localStorage.getItem(LS_MODEL_PER_AGENT) || '[]');
+      globalProvider = (gp === 'groq') ? 'groq' : 'gemini';
+      perAgentProviders = Array(count).fill(globalProvider).map((v, i) => (pa[i] === 'groq' ? 'groq' : (pa[i] === 'gemini' ? 'gemini' : globalProvider)));
+      globalModel = gm || undefined;
+      perAgentModels = Array(count).fill(globalModel || '').map((v, i) => pam[i] || v);
+    } catch {}
 
     // Step 0: Perform web search if internet is enabled
     if (internetEnabled) {
@@ -199,10 +226,20 @@ const App: FC = () => {
       const initialResponses = await Promise.all(
         initialAgents.map(async (agent) => {
           if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-          const response = await ai.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: promptForAgents }] }], config: { systemInstruction: agentInstructions[agent.id] } });
+          const provider = perAgentProviders[agent.id] || globalProvider;
+          const model = perAgentModels[agent.id] || globalModel || MODEL_NAME;
+          let text = '';
+          if (provider === 'groq') {
+            const groqKey = getGroqApiKey();
+            if (!groqKey) throw new Error('Groq API key not set');
+            text = await generateGroqTextViaREST({ apiKey: groqKey, model, system: agentInstructions[agent.id], prompt: promptForAgents, signal: generationControllerRef.current.signal });
+          } else {
+            const response = await ai.models.generateContent({ model, contents: [{ role: 'user', parts: [{ text: promptForAgents }] }], config: { systemInstruction: agentInstructions[agent.id] } });
+            text = response.text ?? '';
+          }
           if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-          const text = response.text ?? '';
           setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
+          addLog('debug', 'Initial response', { agent: agent.id, provider, model, length: text.length });
           return text;
         })
       );
@@ -212,12 +249,22 @@ const App: FC = () => {
       const refinedResponses = await Promise.all(
         initialAgents.map(async (agent, agentIndex) => {
           if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+          const provider = perAgentProviders[agent.id] || globalProvider;
+          const model = perAgentModels[agent.id] || globalModel || MODEL_NAME;
           const otherResponses = initialResponses.map((resp, i) => `Response from Agent ${i + 1}:\n${resp}`).join('\n\n---\n\n');
           const refinementPrompt = `Your original instruction was: "${agentInstructions[agentIndex]}"\n\nHere are the initial responses from all four agents, including your own:\n\n${otherResponses}\n\nPlease critically evaluate all responses. Identify weaknesses, inconsistencies, or factual errors. Then, generate a new, superior response that improves upon these initial drafts.`;
-          const response = await ai.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: refinementPrompt }] }], config: { systemInstruction: REFINEMENT_SYSTEM_INSTRUCTION } });
+          let text = '';
+          if (provider === 'groq') {
+            const groqKey = getGroqApiKey();
+            if (!groqKey) throw new Error('Groq API key not set');
+            text = await generateGroqTextViaREST({ apiKey: groqKey, model, system: REFINEMENT_SYSTEM_INSTRUCTION, prompt: refinementPrompt, signal: generationControllerRef.current.signal });
+          } else {
+            const response = await ai.models.generateContent({ model, contents: [{ role: 'user', parts: [{ text: refinementPrompt }] }], config: { systemInstruction: REFINEMENT_SYSTEM_INSTRUCTION } });
+            text = response.text ?? '';
+          }
           if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-          const text = response.text ?? '';
           setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text, status: 'done' } : a));
+          addLog('debug', 'Refined response', { agent: agent.id, provider, model, length: text.length });
           return text;
         })
       );
@@ -226,9 +273,20 @@ const App: FC = () => {
       const sourceListForSynthesizer = sources.map((s, i) => `Source [${i + 1}]: ${s.url}`).join('\n');
       const finalPrompt = `Here are the four refined responses from the agent team:\n\n${refinedResponses.map((r, i) => `Refined Response from Agent ${i + 1}:\n${r}`).join('\n\n---\n\n')}\n\n${sourceListForSynthesizer ? `Use these sources for citation:\n${sourceListForSynthesizer}\n\n` : ''}Synthesize these into a single, final, comprehensive answer for the user. Remember to add citations like [1], [2] etc. where appropriate.`;
       if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-      const finalResponse = await ai.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: finalPrompt }] }], config: { systemInstruction: SYNTHESIZER_SYSTEM_INSTRUCTION } });
-      if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-      const finalText = finalResponse.text ?? '';
+      let finalText = '';
+      {
+        const provider = globalProvider;
+        const model = globalModel || MODEL_NAME;
+        if (provider === 'groq') {
+          const groqKey = getGroqApiKey();
+          if (!groqKey) throw new Error('Groq API key not set');
+          finalText = await generateGroqTextViaREST({ apiKey: groqKey, model, system: SYNTHESIZER_SYSTEM_INSTRUCTION, prompt: finalPrompt, signal: generationControllerRef.current.signal });
+        } else {
+          const finalResponse = await ai.models.generateContent({ model, contents: [{ role: 'user', parts: [{ text: finalPrompt }] }], config: { systemInstruction: SYNTHESIZER_SYSTEM_INSTRUCTION } });
+          finalText = finalResponse.text ?? '';
+        }
+        addLog('info', 'Final synthesized response', { provider, model, length: finalText.length });
+      }
       
       const collaborationTrace: CollaborationTrace = { initialResponses, refinedResponses };
       const modelMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: finalText }], collaborationTrace, sources: sources.length > 0 ? sources : undefined };
@@ -254,6 +312,9 @@ const App: FC = () => {
         // User aborted; do not append error message
       } else {
         console.error("An error occurred during agent collaboration:", error);
+        // push notice and log
+        try { addLog('error', 'Run failed', { error: (error as any)?.message || String(error) }); } catch {}
+        try { pushNotice('error', `Run failed: ${(error as any)?.message || String(error)}`); } catch {}
         const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: 'Sorry, something went wrong. Please check the console for details.' }] };
         setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
       }
@@ -262,6 +323,8 @@ const App: FC = () => {
       setCurrentCollaborationState([]);
       setLoadingMessage('');
       generationControllerRef.current.finish();
+      try { pushNotice('success', 'Processing done'); } catch {}
+      try { addLog('info', 'Run finished'); } catch {}
     }
   };
 
@@ -340,6 +403,20 @@ const App: FC = () => {
 
   return (
     <div className="app-wrapper">
+      {/* Floating notices */}
+      <div style={{ position: 'fixed', right: '1rem', bottom: '1rem', zIndex: 1000, maxWidth: '360px' }}>
+        {notices.map(n => (
+          <div key={n.id} style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', background: n.type==='success'? 'rgba(46,204,113,0.12)' : n.type==='error'? 'rgba(231,76,60,0.12)' : 'rgba(52,152,219,0.12)', color: n.type==='success'? '#2ecc71' : n.type==='error'? '#e74c3c' : '#3498db', border: `1px solid ${n.type==='success'? '#2ecc71' : n.type==='error'? '#e74c3c' : '#3498db'}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+              <div style={{ fontSize: '0.9rem', lineHeight: 1.35 }}>{n.text}</div>
+              <div style={{ display:'flex', gap:'0.5rem' }}>
+                <button onClick={() => exportLogs()} title="Export logs" aria-label="Export logs" style={{ border: 'none', background: 'transparent', color:'inherit', cursor:'pointer' }}>⤓</button>
+                <button onClick={() => dismissNotice(n.id)} aria-label="Dismiss" style={{ border: 'none', background: 'transparent', color: 'inherit', cursor: 'pointer', fontWeight: 700 }}>×</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
       <SettingsModal 
         isOpen={isSettingsOpen} 
         onClose={() => setIsSettingsOpen(false)} 

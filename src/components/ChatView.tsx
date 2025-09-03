@@ -190,16 +190,31 @@ const ChatView: FC<ChatViewProps> = ({
           disabled={isLoading}
           aria-label="Type your message"
         />
-        <button
-          type="submit"
-          className="chat-input__submit-button"
-          disabled={isLoading || input.trim() === ''}
-          aria-label="Send message"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
-          </svg>
-        </button>
+        {isLoading ? (
+          <button
+            type="button"
+            className="chat-input__submit-button"
+            onClick={onStopGeneration}
+            aria-label="Stop generation"
+            title="Stop"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 6h12v12H6z" />
+            </svg>
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className="chat-input__submit-button"
+            disabled={input.trim() === ''}
+            aria-label="Send message"
+            title="Send"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
+            </svg>
+          </button>
+        )}
       </form>
     </div>
   );
