@@ -27,6 +27,7 @@ interface ChatViewProps {
   setIsSettingsOpen: (open: boolean) => void;
   onUpdateMessage: (messageId: string, newText: string) => void;
   onResendMessage: (messageId: string, newText: string) => void;
+  onStopGeneration: () => void;
 }
 
 /**
@@ -50,6 +51,7 @@ const ChatView: FC<ChatViewProps> = ({
   setIsSettingsOpen,
   onUpdateMessage,
   onResendMessage,
+  onStopGeneration,
 }) => {
   const messageListRef = useRef<HTMLDivElement>(null);
 
@@ -137,21 +139,37 @@ const ChatView: FC<ChatViewProps> = ({
             <div className="agent-workspace">
               <div className="agent-workspace__header">
                 <div className="agent-workspace__title">Live Agent Workspace</div>
-                <button
-                  className="agent-workspace__toggle"
-                  onClick={() => setShowCollaboration(!showCollaboration)}
-                  aria-expanded={showCollaboration}
-                >
-                  <svg
-                    className={showCollaboration ? 'expanded' : ''}
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    className="agent-workspace__toggle"
+                    onClick={() => setShowCollaboration(!showCollaboration)}
+                    aria-expanded={showCollaboration}
                   >
-                    <path d="M12 15.6l-6-6 1.4-1.4L12 12.8l4.6-4.6L18 9.6l-6 6z" />
-                  </svg>
-                  {showCollaboration ? 'Hide details' : 'Show details'}
-                </button>
+                    <svg
+                      className={showCollaboration ? 'expanded' : ''}
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M12 15.6l-6-6 1.4-1.4L12 12.8l4.6-4.6L18 9.6l-6 6z" />
+                    </svg>
+                    {showCollaboration ? 'Hide details' : 'Show details'}
+                  </button>
+
+                  {isLoading && (
+                    <button
+                      className="agent-workspace__toggle"
+                      onClick={onStopGeneration}
+                      aria-label="Stop generation"
+                      title="Stop generation"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 6h12v12H6z" />
+                      </svg>
+                      Stop
+                    </button>
+                  )}
+                </div>
               </div>
               <div className={`agent-grid-wrapper ${showCollaboration ? 'agent-grid-wrapper--visible' : ''}`}>
                 <LiveAgentWorkspace agentStates={currentCollaborationState} className="agent-grid" />

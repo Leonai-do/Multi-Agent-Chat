@@ -86,3 +86,22 @@ Virtualized message list: For long histories, use list virtualization to keep sc
 [ - ] 40- Analytics/telemetry (optional): Basic client‑side metrics for generation duration per agent and errors.
 
 [ - ] 41- Make the agent's instruction box collapsable, separate their names in the boxes by adding a padding, since the names are too close to the content. of the box.
+
+[ - ] 42- Create reusable UI components (StopButton, CopyButton, TextInput, ChatInput, MessageToolbar, RawTextPanel, AgentBoxBase, CollaborationTraceGrid) and refactor to use them.
+[ - ] 43- Introduce GenerationController with AbortController and event emitter (isGenerating, stop, onProgress) to coordinate runs and cancellations.
+[ - ] 44- Extract collaboration orchestrator into src/agents/collaborationOrchestrator.ts (search → initial → refine → synthesize) with abort checks and progress callbacks.
+[ - ] 45- Define LLMProvider SPI and ProviderRegistry with capability flags (streaming, vision, functionCalling); implement geminiProvider adapter.
+[ - ] 46- Add Tools layer with a unified Tool interface (Search, FetchPage, Cite) supporting abort signals; design for optional server proxy.
+[ - ] 47- Implement RAG substrate: interfaces for DocumentStore, Chunker, Embedder, Retriever with an in-memory default.
+[ - ] 48- Hook file uploads into RAG: parse → chunk → embed → store; retrieve top-k passages and inject into prompts with citations.
+[ - ] 49- Add Vision support: image attachments in messages, provider gating for vision models, drag/drop UI with previews.
+[ - ] 50- Split index.css into partials (tokens.css, theme.css, layout.css, chat.css, message.css, agent.css, controls.css) and import them.
+[ - ] 51- Make Settings modal schema-driven; add provider/model selection, agent count, and toggles for Internet, RAG, and Vision.
+[ - ] 52- Implement feature flag service and UI gating based on provider capabilities and settings.
+[ - ] 53- Add optional backend proxy endpoints for tools/providers to protect API keys; keep front-end SPI stable.
+[ - ] 54- Add streaming token support in UI when provider supports it; show per-agent progress/timers.
+[ - ] 55- Add contract tests for Provider and Tool interfaces; unit tests for orchestrator ordering/abort and keyboard shortcuts.
+[ - ] 56- Add Debug mode to log orchestrator events and tool invocations to a dev panel/console.
+[ - ] 57- Add bounded concurrency for agent phases and batch state updates to reduce UI churn.
+[ - ] 58- Code-split heavy/optional views and libraries (e.g., collaboration trace, markdown parsing) for faster initial load.
+[ - ] 59- Document architecture and extension points (providers, tools, RAG, vision) to guide future modules.

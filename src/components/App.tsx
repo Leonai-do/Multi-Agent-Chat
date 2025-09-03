@@ -12,6 +12,7 @@ import ChatView from './ChatView';
 import { MODEL_NAME, INITIAL_SYSTEM_INSTRUCTION, REFINEMENT_SYSTEM_INSTRUCTION, SYNTHESIZER_SYSTEM_INSTRUCTION } from '../constants';
 import type { Chat, Message, LiveAgentState, CollaborationTrace, Source } from '../types';
 import { LS_CHATS_KEY, LS_TAVILY_KEY, getGeminiApiKey } from '../config';
+import GenerationController from '../state/generation';
 
 /**
  * The main App component.
@@ -47,6 +48,8 @@ const App: FC = () => {
   const [loadingMessage, setLoadingMessage] = useState('');
   // State for the Tavily API key, managed in Settings
   const [tavilyApiKey, setTavilyApiKey] = useState<string>('');
+  // Controller that coordinates generation runs and cancellation
+  const generationControllerRef = useRef<GenerationController>(new GenerationController());
 
   // Effect to initialize the Gemini API client and load data from localStorage
   useEffect(() => {
@@ -138,6 +141,7 @@ const App: FC = () => {
             include_raw_content: true,
             max_results: 3,
           }),
+          signal: generationControllerRef.current.signal,
         });
         if (!response.ok) throw new Error(`Tavily API error: ${response.statusText}`);
         const searchData = await response.json();
@@ -180,7 +184,9 @@ const App: FC = () => {
       setCurrentCollaborationState(prev => prev.map(a => ({ ...a, status: 'writing' })));
       const initialResponses = await Promise.all(
         initialAgents.map(async (agent) => {
+          if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
           const response = await ai.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: promptForAgents }] }], config: { systemInstruction: agentInstructions[agent.id] } });
+          if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
           const text = response.text ?? '';
           setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
           return text;
@@ -191,9 +197,11 @@ const App: FC = () => {
       setCurrentCollaborationState(prev => prev.map(a => ({ ...a, status: 'refining' })));
       const refinedResponses = await Promise.all(
         initialAgents.map(async (agent, agentIndex) => {
+          if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
           const otherResponses = initialResponses.map((resp, i) => `Response from Agent ${i + 1}:\n${resp}`).join('\n\n---\n\n');
           const refinementPrompt = `Your original instruction was: "${agentInstructions[agentIndex]}"\n\nHere are the initial responses from all four agents, including your own:\n\n${otherResponses}\n\nPlease critically evaluate all responses. Identify weaknesses, inconsistencies, or factual errors. Then, generate a new, superior response that improves upon these initial drafts.`;
           const response = await ai.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: refinementPrompt }] }], config: { systemInstruction: REFINEMENT_SYSTEM_INSTRUCTION } });
+          if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
           const text = response.text ?? '';
           setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text, status: 'done' } : a));
           return text;
@@ -203,7 +211,9 @@ const App: FC = () => {
       // Step 3: Get the final synthesized response from the fifth agent
       const sourceListForSynthesizer = sources.map((s, i) => `Source [${i + 1}]: ${s.url}`).join('\n');
       const finalPrompt = `Here are the four refined responses from the agent team:\n\n${refinedResponses.map((r, i) => `Refined Response from Agent ${i + 1}:\n${r}`).join('\n\n---\n\n')}\n\n${sourceListForSynthesizer ? `Use these sources for citation:\n${sourceListForSynthesizer}\n\n` : ''}Synthesize these into a single, final, comprehensive answer for the user. Remember to add citations like [1], [2] etc. where appropriate.`;
+      if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
       const finalResponse = await ai.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: finalPrompt }] }], config: { systemInstruction: SYNTHESIZER_SYSTEM_INSTRUCTION } });
+      if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
       const finalText = finalResponse.text ?? '';
       
       const collaborationTrace: CollaborationTrace = { initialResponses, refinedResponses };
@@ -226,13 +236,18 @@ const App: FC = () => {
       }
 
     } catch (error) {
-      console.error("An error occurred during agent collaboration:", error);
-      const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: 'Sorry, something went wrong. Please check the console for details.' }] };
-      setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
+      if ((error as any)?.name === 'AbortError' || generationControllerRef.current.signal.aborted) {
+        // User aborted; do not append error message
+      } else {
+        console.error("An error occurred during agent collaboration:", error);
+        const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: 'Sorry, something went wrong. Please check the console for details.' }] };
+        setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
+      }
     } finally {
       setIsLoading(false);
       setCurrentCollaborationState([]);
       setLoadingMessage('');
+      generationControllerRef.current.finish();
     }
   };
 
@@ -301,6 +316,14 @@ const App: FC = () => {
 
   const activeChat = chats.find(c => c.id === activeChatId);
 
+  /** Stops any in-flight generation and resets UI state. */
+  const handleStopGeneration = () => {
+    generationControllerRef.current.stop();
+    setIsLoading(false);
+    setCurrentCollaborationState([]);
+    setLoadingMessage('');
+  };
+
   return (
     <div className="app-wrapper">
       <SettingsModal 
@@ -331,6 +354,7 @@ const App: FC = () => {
         setIsSettingsOpen={setIsSettingsOpen}
         onUpdateMessage={handleUpdateMessage}
         onResendMessage={handleResendMessage}
+        onStopGeneration={handleStopGeneration}
       />
     </div>
   );
