@@ -11,7 +11,7 @@ import SettingsModal from './SettingsModal';
 import ChatView from './ChatView';
 import { MODEL_NAME, INITIAL_SYSTEM_INSTRUCTION, REFINEMENT_SYSTEM_INSTRUCTION, SYNTHESIZER_SYSTEM_INSTRUCTION } from '../constants';
 import type { Chat, Message, LiveAgentState, CollaborationTrace, Source } from '../types';
-import { LS_CHATS_KEY, LS_TAVILY_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, getGeminiApiKey, getGroqApiKey } from '../config';
+import { LS_CHATS_KEY, LS_TAVILY_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, LS_AGENT_INSTRUCTIONS, LS_AGENT_NAMES, getGeminiApiKey, getGroqApiKey } from '../config';
 import { generateGroqTextViaREST } from '../llm/groqRest';
 import { addLog, exportLogs } from '../state/logs';
 import GenerationController from '../state/generation';
@@ -60,8 +60,9 @@ const App: FC = () => {
   const [showCollaboration, setShowCollaboration] = useState(false);
   // State for the settings modal visibility
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  // State for the customizable system instructions for the initial agents
+  // State for the customizable system instructions and names for the agents
   const [agentInstructions, setAgentInstructions] = useState<string[]>(() => Array(4).fill(INITIAL_SYSTEM_INSTRUCTION));
+  const [agentNames, setAgentNames] = useState<string[]>(() => Array(4).fill('').map((_, i) => `Agent ${i + 1}`));
   // State for sidebar visibility, especially on mobile
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
   // State for enabling/disabling internet access
@@ -92,13 +93,22 @@ const App: FC = () => {
         console.error("Gemini API Key not found. Please ensure it's set in your environment variables.");
     }
     
-    // Load chats and Tavily API key from local storage on initial render
+    // Load chats, keys, and agent metadata from local storage on initial render
     try {
       const savedChats = localStorage.getItem(LS_CHATS_KEY);
       if (savedChats) setChats(JSON.parse(savedChats));
       
       const savedTavilyKey = localStorage.getItem(LS_TAVILY_KEY);
       if (savedTavilyKey) setTavilyApiKey(savedTavilyKey);
+
+      const savedInstr = localStorage.getItem(LS_AGENT_INSTRUCTIONS);
+      if (savedInstr) {
+        try { const arr = JSON.parse(savedInstr); if (Array.isArray(arr) && arr.length) setAgentInstructions(arr); } catch {}
+      }
+      const savedNames = localStorage.getItem(LS_AGENT_NAMES);
+      if (savedNames) {
+        try { const arr = JSON.parse(savedNames); if (Array.isArray(arr) && arr.length) setAgentNames(arr); } catch {}
+      }
 
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
@@ -113,6 +123,14 @@ const App: FC = () => {
       console.error("Failed to save chats to localStorage", error);
     }
   }, [chats]);
+
+  // Persist agent settings
+  useEffect(() => {
+    try { localStorage.setItem(LS_AGENT_INSTRUCTIONS, JSON.stringify(agentInstructions)); } catch {}
+  }, [agentInstructions]);
+  useEffect(() => {
+    try { localStorage.setItem(LS_AGENT_NAMES, JSON.stringify(agentNames)); } catch {}
+  }, [agentNames]);
   
   // --- Chat Management Handlers ---
 
@@ -124,6 +142,12 @@ const App: FC = () => {
     } catch (error) {
         console.error("Failed to save Tavily API key to localStorage", error);
     }
+  };
+
+  /** Saves agent instructions and names from Settings modal. */
+  const handleSaveAgentSettings = (newInstructions: string[], newNames: string[]) => {
+    setAgentInstructions(newInstructions);
+    setAgentNames(newNames);
   };
 
   /** Sets the active chat to null, effectively showing the welcome screen to start a new chat. */
@@ -156,6 +180,10 @@ const App: FC = () => {
 
     let webContext = '';
     let sources: Source[] = [];
+    // Defensive: resolve agent names fallback to avoid runtime ReferenceError in templates
+    const namesLocal: string[] = (Array.isArray(agentNames) && agentNames.length)
+      ? agentNames
+      : Array(4).fill('').map((_, i) => `Agent ${i + 1}`);
     // Load provider/model preferences
     const count = 4;
     let globalProvider: 'gemini'|'groq' = 'gemini';
@@ -252,9 +280,11 @@ const App: FC = () => {
           if (provider === 'groq') {
             const groqKey = getGroqApiKey();
             if (!groqKey) throw new Error('Groq API key not set');
-            text = await generateGroqTextViaREST({ apiKey: groqKey, model, system: agentInstructions[agent.id], prompt: promptForAgents, signal: generationControllerRef.current.signal });
+            const sys = `You are ${namesLocal[agent.id]}. ${agentInstructions[agent.id]}`;
+            text = await generateGroqTextViaREST({ apiKey: groqKey, model, system: sys, prompt: promptForAgents, signal: generationControllerRef.current.signal });
           } else {
-            const response = await ai.models.generateContent({ model, contents: [{ role: 'user', parts: [{ text: promptForAgents }] }], config: { systemInstruction: agentInstructions[agent.id] } });
+            const sys = `You are ${namesLocal[agent.id]}. ${agentInstructions[agent.id]}`;
+            const response = await ai.models.generateContent({ model, contents: [{ role: 'user', parts: [{ text: promptForAgents }] }], config: { systemInstruction: sys } });
             text = response.text ?? '';
           }
           if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
@@ -272,7 +302,7 @@ const App: FC = () => {
           const provider = perAgentProviders[agent.id] || globalProvider;
           const model = perAgentModels[agent.id] || globalModel || MODEL_NAME;
           const otherResponses = initialResponses.map((resp, i) => `Response from Agent ${i + 1}:\n${resp}`).join('\n\n---\n\n');
-          const refinementPrompt = `Your original instruction was: "${agentInstructions[agentIndex]}"\n\nHere are the initial responses from all four agents, including your own:\n\n${otherResponses}\n\nPlease critically evaluate all responses. Identify weaknesses, inconsistencies, or factual errors. Then, generate a new, superior response that improves upon these initial drafts.`;
+          const refinementPrompt = `Your original instruction was: "You are ${namesLocal[agentIndex]}. ${agentInstructions[agentIndex]}"\n\nHere are the initial responses from all four agents, including your own:\n\n${otherResponses}\n\nPlease critically evaluate all responses. Identify weaknesses, inconsistencies, or factual errors. Then, generate a new, superior response that improves upon these initial drafts.`;
           let text = '';
           if (provider === 'groq') {
             const groqKey = getGroqApiKey();
@@ -442,7 +472,8 @@ const App: FC = () => {
         isOpen={isSettingsOpen} 
         onClose={() => setIsSettingsOpen(false)} 
         instructions={agentInstructions} 
-        onSave={setAgentInstructions}
+        names={agentNames}
+        onSave={handleSaveAgentSettings}
         tavilyApiKey={tavilyApiKey}
         onSaveTavilyApiKey={handleSaveTavilyApiKey}
       />

@@ -108,6 +108,27 @@ Virtualized message list: For long histories, use list virtualization to keep sc
 #### [ ⏳ ] Task 41 - Agent Instruction Box Improvements
 Make the agent's instruction box collapsable, separate their names in the boxes by adding a padding, since the names are too close to the content. of the box.
 
+#### [ ⏳ ] Task 62 - Chat Panel Glass Card
+Center the chat surface in a single column and wrap the message list + input in a glassmorphism card (backdrop blur, semi‑transparent bg, subtle border/shadow). Constrain max width (900–1100px) for readability.
+
+#### [ ⏳ ] Task 63 - Message Card Redesign
+Add a small header row to model/user messages: left = sender name, right = timestamp; include a small provider badge (e.g., Gemini/Groq). Keep current Markdown rendering, unify bubble spacing, and ensure code blocks align visually.
+
+#### [ ⏳ ] Task 64 - Code Block & Copy Unification
+Unify code block styling (monospace, subtle bg, rounded corners) and reuse the same copy affordance and feedback across messages and agent boxes for consistency.
+
+#### [ ⏳ ] Task 65 - Input Bar UX & States
+Implement Shift+Enter for newline and Ctrl/Cmd+Enter to send; add a spinner + “Sending…” label on the button and a disabled state during processing; add a small hint below the input about shortcuts.
+
+#### [ ⏳ ] Task 66 - Status & Error Row
+Add a compact status/error row beneath the chat card to surface connection/provider errors and run state using high‑contrast boxes (non‑blocking, dismissible).
+
+#### [ ⏳ ] Task 67 - Typographic & Spacing Polish
+Normalize section titles, labels, helper text, and vertical rhythm across chat and settings (uniform gaps, dividers) to improve scannability.
+
+#### [ ⏳ ] Task 68 - Theme Tokens & Accent Consolidation
+Introduce an --accent color (indigo) and shared tokens for focus rings, shadows, and card backgrounds; apply across inputs, selects, buttons, and badges for a cohesive look.
+
 ### 🔧 File Upload & Media Support
 
 #### [ ⏳ ] Task 3 - Agent-Specific File Upload
@@ -225,11 +246,33 @@ Code-split heavy/optional views and libraries (e.g., collaboration trace, markdo
 #### [ ⏳ ] Task 59 - Architecture Documentation
 Document architecture and extension points (providers, tools, RAG, vision) to guide future modules.
 
+### ⚙️ Settings & Configuration
+
+#### [ ⏳ ] Task 69 - Providers Tab Section‑Cards
+Finalize Providers & Models into three section‑cards: (1) API Keys with Save & Test, (2) Global Defaults (Provider/Model), (3) Agents Grid (per‑agent Provider/Model). Add concise helper text.
+
+#### [ ⏳ ] Task 70 - Sidebar Icons & Tab Persistence
+Add icons to settings sidebar items and persist the last opened tab in localStorage; restore it when reopening Settings.
+
+#### [ ⏳ ] Task 71 - Refresh Models & Apply Global
+Add “Refresh models” next to Global Model and an “Apply Global to All Agents” action to propagate model choice quickly.
+
+#### [ ⏳ ] Task 72 - Agent Name Preview & Validation
+Show a one‑line preview (“You are {name}…”) under each instruction textarea; validate names (non‑empty, reasonable length) with inline feedback.
+
+#### [ ⏳ ] Task 73 - Collapsible Settings Sections
+Make API Keys, Global Defaults, and Agents collapsible with remembered state to reduce vertical scrolling on smaller screens.
+
+### 🧪 Quality & Tests
+
+#### [ ⏳ ] Task 74 - E2E Coverage for New UX
+Add Playwright tests for: glass chat card present; message header/badge; input spinner state on send; keyboard shortcuts; settings navigation with tab persistence; refresh models/apply‑global; provider badge rendering.
+
 ---
 
 ## 📊 Task Summary
 - **✅ Completed:** 3 tasks
 - **🔄 In Progress:** 7 tasks  
-- **⏳ Pending:** 51 tasks
+- **⏳ Pending:** 64 tasks
 - **❌ Cancelled:** 0 tasks
-- **📈 Total:** 61 tasks
+- **📈 Total:** 74 tasks

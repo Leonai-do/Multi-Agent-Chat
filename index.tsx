@@ -19,6 +19,9 @@ if (!rootElement) {
 // Hook console and network logging early
 try { hookConsoleAndNetwork(); } catch {}
 
+// Defensive: ensure a global placeholder exists to avoid stray ReferenceErrors in runtime
+try { (window as any).agentNames = (window as any).agentNames || []; } catch {}
+
 const root = createRoot(rootElement);
 root.render(
   <ErrorBoundary>
