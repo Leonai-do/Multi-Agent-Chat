@@ -145,7 +145,7 @@ const ChatView: FC<ChatViewProps> = ({
       {!hasMessages ? (
         <div className="welcome-screen">
           <div>
-            <div className="welcome-screen__title">Welcome to Multi-Agent Gemini Chat</div>
+            <div className="welcome-screen__title">Welcome to Multi-Agent Chat</div>
             <div className="welcome-screen__subtitle">Start by typing a prompt below and press Enter.</div>
           </div>
         </div>

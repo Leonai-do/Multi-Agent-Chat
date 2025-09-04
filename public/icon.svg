@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="256" height="256" aria-hidden="true" role="img">
+  <!-- Simple, single‑color chat glyph with three dots (multi‑agent hint) -->
+  <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"
+    d="M8 5h8c3.314 0 6 2.686 6 6v2c0 3.314-2.686 6-6 6h-4.8c-.2 0-.395.06-.56.17L6.2 21.6c-.77.5-1.76-.12-1.62-1.01l.36-2.22c.04-.26-.03-.53-.2-.74C3.64 16.6 2 14.3 2 11V11c0-3.314 2.686-6 6-6Zm-1 6a1.5 1.5 0 1 0 3 0a1.5 1.5 0 0 0-3 0Zm5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 0 0-3 0Zm6 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 0 0-3 0Z"/>
+</svg>

@@ -4,7 +4,7 @@
 import React, { useState, useEffect, FC } from 'react';
 import LoadingBar from './LoadingBar';
 import { INITIAL_SYSTEM_INSTRUCTION } from '../constants';
-import { LS_GROQ_KEY, LS_GEMINI_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, LS_FLAG_VISION, LS_FLAG_FUNCTIONS } from '../config';
+import { LS_GROQ_KEY, LS_GEMINI_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, LS_FLAG_VISION, LS_FLAG_FUNCTIONS, LS_TRACE_DEFAULT_OPEN } from '../config';
 import { fetchModelsForProvider, type ModelOption } from '../llm/models';
 
 /**
@@ -54,6 +54,8 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
   // Feature flags
   const [visionEnabled, setVisionEnabled] = useState<boolean>(false);
   const [functionsEnabled, setFunctionsEnabled] = useState<boolean>(false);
+  // Rendering defaults
+  const [traceDefaultOpen, setTraceDefaultOpen] = useState<boolean>(true);
   const fetchAbortRef = React.useRef<AbortController | null>(null);
   // Feedback messages (floating)
   type Feedback = { id: number; type: 'success' | 'error' | 'info'; text: string };
@@ -96,6 +98,8 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
         // feature flags
         setVisionEnabled((localStorage.getItem(LS_FLAG_VISION) || '0') === '1');
         setFunctionsEnabled((localStorage.getItem(LS_FLAG_FUNCTIONS) || '0') === '1');
+        const tdef = localStorage.getItem(LS_TRACE_DEFAULT_OPEN);
+        setTraceDefaultOpen(tdef === null ? true : tdef === '1');
       } catch {
         const count = (instructions?.length || 4);
         setPerAgentProviders(Array(count).fill('gemini'));
@@ -213,6 +217,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
       localStorage.setItem(LS_MODEL_PER_AGENT, JSON.stringify(perAgentModels));
       localStorage.setItem(LS_FLAG_VISION, visionEnabled ? '1' : '0');
       localStorage.setItem(LS_FLAG_FUNCTIONS, functionsEnabled ? '1' : '0');
+      localStorage.setItem(LS_TRACE_DEFAULT_OPEN, traceDefaultOpen ? '1' : '0');
     } catch {}
     try { logEvent('settings','info','save_all', { instructionsLength: currentInstructions.map(x=>x.length), names: currentNames, globalProvider, globalModel, perAgentProviders, perAgentModels, visionEnabled, functionsEnabled }); } catch {}
     onClose();
@@ -392,6 +397,20 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
           <div className="settings-content">
             {activeTab === 'providers' && ProvidersSection}
             {activeTab === 'agents' && AgentsSection}
+            {activeTab === 'general' && (
+              <>
+                <div className="section-card">
+                  <div className="section-card__title">General</div>
+                  <div className="section-card__desc">Default behaviors and UI preferences.</div>
+                  <div className="form-row">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input type="checkbox" checked={traceDefaultOpen} onChange={(e) => setTraceDefaultOpen(e.target.checked)} aria-label="Keep collaboration trace open by default" />
+                      <span>Keep collaboration trace open by default</span>
+                    </label>
+                  </div>
+                </div>
+              </>
+            )}
             {activeTab === 'vision' && (
               <>
                 <div className="section-card">

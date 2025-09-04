@@ -3,7 +3,7 @@
  */
 
 /** App title used in headers and metadata. */
-export const APP_TITLE = 'Multi-Agent Gemini Chat';
+export const APP_TITLE = 'Multi-Agent Chat';
 
 /** Default input placeholder text. */
 export const INPUT_PLACEHOLDER = 'Ask anything...';
@@ -21,6 +21,7 @@ export const LS_MODEL_GLOBAL = 'model-global';
 export const LS_MODEL_PER_AGENT = 'model-per-agent';
 export const LS_FLAG_VISION = 'flag-vision-enabled';
 export const LS_FLAG_FUNCTIONS = 'flag-functions-enabled';
+export const LS_TRACE_DEFAULT_OPEN = 'trace-default-open';
 
 /**
  * Resolve Gemini API key from environment.
@@ -55,4 +56,15 @@ export const getVisionEnabled = (): boolean => {
 };
 export const getFunctionsEnabled = (): boolean => {
   try { return localStorage.getItem(LS_FLAG_FUNCTIONS) === '1'; } catch { return false; }
+};
+
+/** Collaboration trace default visibility (default true). */
+export const getTraceDefaultOpen = (): boolean => {
+  try {
+    const v = localStorage.getItem(LS_TRACE_DEFAULT_OPEN);
+    if (v === null) return true; // default: open
+    return v === '1';
+  } catch {
+    return true;
+  }
 };

@@ -28,7 +28,7 @@ Build path clarity: You have both Vite and a CDN import map setup (index.html). 
 Implemented Stop control wired to AbortController in the live collaboration view. Verified by e2e test "send prompt and cancel/complete run cleanly".
 
 ### [ ✅ ] Task 29 - Provider Abstraction
-Introduced LLM Provider SPI and registry with adapters for Gemini and Groq. App now routes all generation via providers.
+Introduce LLM Provider SPI and registry with adapters for Gemini and Groq. App now routes all generation via providers.
 
 ### [ ✅ ] Task 30 - Abort/Stop Generation
 AbortController is threaded end‑to‑end; Stop cancels in‑flight calls across all phases. Providers support streaming with cancellation.
@@ -52,32 +52,37 @@ Added header with sender name, timestamp, and provider/model badge. Unified spac
 Providers & Models now uses three section‑cards: API Keys (Save & Test), Global Defaults, and Agents Grid.
 
 ### [ ✅ ] Task 71 - Refresh Models & Apply Global
-Added “Refresh models” and “Apply Global to Agents” actions in Settings.
+Added "Refresh models" and "Apply Global to Agents" actions in Settings.
 
 ---
 
 ## 🔄 IN PROGRESS TASKS
 
-### [ 🔄 ] Task 6 - Thinking Visibility
+### [ ⚠️ ] Task 6 - Thinking Visibility
 Add thinking visibility to the app, so when any model that supports thinking, is thinking, the user can see the thinking process of the model, and the app shows the user the thinking process of the model, and then the user can see the final answer of the model in a separate box.
+**Status**: Partially implemented - Status indicators exist ("writing", "refining") but no actual thinking process streaming or separate thinking boxes.
 
-### [ 🔄 ] Task 14 - Thinking Mechanism Visibility
+### [ ⚠️ ] Task 14 - Thinking Mechanism Visibility
 Add visibility to the thinking mechanism of the models
+**Status**: Partially implemented - Same as Task 6; basic status tracking but no mechanism visibility.
 
-### [ 🔄 ] Task 17 - Internet Support Enhancement
+### [ ⚠️ ] Task 17 - Internet Support Enhancement
 Add Internet Support: Useful, but you'll want a tool layer + server proxy to avoid leaking API keys. Approach: add a "tools" adapter (search, fetch page, cite) and pass retrieved snippets into prompts. UI: toggle in settings with "include web results" and "max sources". Note: this front‑end only app needs a small backend for search APIs.
+**Status**: Partially implemented - Tavily API integration is working, but no tools layer, server proxy, or UI toggles for web results.
 
-### [ 🔄 ] Task 22 - Thinking Visibility Enhancement
+### [ ⚠️ ] Task 22 - Thinking Visibility Enhancement
 Thinking Visibility: Two parts: status + streaming. Status is there ("writing", "refining") in live view. Consider switching to streaming for token‑by‑token updates if the API supports it, and show per‑agent progress/timers. Avoid exposing chain‑of‑thought; instead show "reasoning in progress" intents and high‑level steps.
+**Status**: Partially implemented - Status indicators exist, but no token-by-token streaming or progress timers.
 
-### [ 🔄 ] Task 25 - Remove Hard-coded Agent Count
+### [ ⏳ ] Task 25 - Remove Hard-coded Agent Count
 Remove hard‑coded agent count: Replace Array(4) with a derived count or setting in src/components/App.tsx:40,100 and src/components/SettingsModal.tsx:65. Also adjust prompts that say "four agents."
 Unify styling approach: The app uses global CSS (index.css) while CSS modules exist but aren't imported (src/components/*.module.css, src/styles/global.css). Choose one approach (likely global, given index.html) and delete unused modules to reduce confusion.
 
- 
+  
 
 ### [ 🔄 ] Task 38 - Accessibility Improvements
 Accessibility: Ensure buttons have clear labels (many do), and improve focus rings for keyboard navigation.
+**Status**: In progress - Some aria-labels are implemented, but comprehensive accessibility features need completion.
 
 ---
 
@@ -88,7 +93,7 @@ Accessibility: Ensure buttons have clear labels (many do), and improve focus rin
 #### [ ⏳ ] Task 1 - Multi-line Support
 Add multi-line support to the app, when the users are writing a message, they must be able to write multiple lines of text by using ctl+enter or shit+enter, and send the message by using enter.
 
- 
+  
 
 #### [ ⏳ ] Task 5 - Copy Buttons for Agent Responses
 Add a copy button for both inital and refined response from the agents, in the agent box, and in the collaboration trace view.
@@ -139,13 +144,13 @@ Make the agent's instruction box collapsable, separate their names in the boxes 
 #### [ ⏳ ] Task 62 - Chat Panel Glass Card
 Center the chat surface in a single column and wrap the message list + input in a glassmorphism card (backdrop blur, semi‑transparent bg, subtle border/shadow). Constrain max width (900–1100px) for readability.
 
- 
+  
 
 #### [ ⏳ ] Task 64 - Code Block & Copy Unification
 Unify code block styling (monospace, subtle bg, rounded corners) and reuse the same copy affordance and feedback across messages and agent boxes for consistency.
 
 #### [ ⏳ ] Task 65 - Input Bar UX & States
-Implement Shift+Enter for newline and Ctrl/Cmd+Enter to send; add a spinner + “Sending…” label on the button and a disabled state during processing; add a small hint below the input about shortcuts.
+Implement Shift+Enter for newline and Ctrl/Cmd+Enter to send; add a spinner + "Sending…" label on the button and a disabled state during processing; add a small hint below the input about shortcuts.
 
 #### [ ⏳ ] Task 66 - Status & Error Row
 Add a compact status/error row beneath the chat card to surface connection/provider errors and run state using high‑contrast boxes (non‑blocking, dismissible).
@@ -155,6 +160,12 @@ Normalize section titles, labels, helper text, and vertical rhythm across chat a
 
 #### [ ⏳ ] Task 68 - Theme Tokens & Accent Consolidation
 Introduce an --accent color (indigo) and shared tokens for focus rings, shadows, and card backgrounds; apply across inputs, selects, buttons, and badges for a cohesive look.
+
+#### [ ⏳ ] Task 75 - Resizable Sidebar with Hover Affordance
+Make the sidebar resizable in a way that integrates deeply with the app without breaking layout. On divider hover, animate subtle thickness and contrast increase to improve affordance. Ensure smooth drag behavior, theme consistency, and no visual jitter across breakpoints.
+
+#### [ ⏳ ] Task 76 - Scrollbar Hover Expansion
+Increase scrollbar thickness app‑wide. Keep a thin default; on hover, animate to a slightly thicker, easier‑to‑grab size, matching the divider affordance from Task 75 while preserving existing theme styling and performance.
 
 ### 🔧 File Upload & Media Support
 
@@ -175,11 +186,7 @@ Agent Number Definition: Good enhancement. The agent count is hard‑coded in mu
 #### [ ⏳ ] Task 61 - Dynamic Agent Management with Aggregator
 Dynamic Agent Management: Add the ability for users to dynamically add/remove agents with a button interface. Each agent should have customizable system instructions. The last agent in the team will serve as an aggregator and judge, compiling all responses from other agents and deciding what to keep in the final output. This includes: UI for adding/removing agents, dynamic agent configuration, aggregator role assignment, and intelligent response synthesis logic.
 
-### 🔌 Provider & Model Support
-
- 
-
- 
+### 🔌 Provider & Model Support 
 
 #### [ ⏳ ] Task 60 - Provider API Key Management
 When the user selects one provider, the api key for that provider is requested, and saved in the local storage, and used for all the requests to that provider. Each provider must have a different api key, and the user must be able to select the provider and enter the api key for that provider, with a box for each provider.
@@ -191,10 +198,6 @@ Raw text view wrapping: Update index.css:633-642 as noted to use horizontal scro
 
 #### [ ⏳ ] Task 28 - Consistent Markdown Rendering
 Consistent Markdown rendering: In src/components/MessageItem.tsx, consider adding components for links (a), tables, and list spacing. For Agent live/trace (src/components/AgentBox.tsx), you currently override pre → fragment; that can break code block layout. Prefer consistent pre/code blocks with the same rules used in messages.
-
- 
-
- 
 
 #### [ ⏳ ] Task 31 - Batch State Updates
 Batch state updates: Inside runAgentCollaboration you call setCurrentCollaborationState multiple times during Promise.all. Consider buffering updates per agent and applying in fewer renders to reduce UI churn.
@@ -224,7 +227,6 @@ Introduce GenerationController with AbortController and event emitter (isGenerat
 #### [ ⏳ ] Task 44 - Collaboration Orchestrator
 Extract collaboration orchestrator into src/agents/collaborationOrchestrator.ts (search → initial → refine → synthesize) with abort checks and progress callbacks.
 
- 
 
 #### [ ⏳ ] Task 46 - Tools Layer
 Add Tools layer with a unified Tool interface (Search, FetchPage, Cite) supporting abort signals; design for optional server proxy.
@@ -270,15 +272,11 @@ Document architecture and extension points (providers, tools, RAG, vision) to gu
 
 ### ⚙️ Settings & Configuration
 
- 
-
 #### [ ⏳ ] Task 70 - Sidebar Icons & Tab Persistence
 Add icons to settings sidebar items and persist the last opened tab in localStorage; restore it when reopening Settings.
 
- 
-
 #### [ ⏳ ] Task 72 - Agent Name Preview & Validation
-Show a one‑line preview (“You are {name}…”) under each instruction textarea; validate names (non‑empty, reasonable length) with inline feedback.
+Show a one‑line preview ("You are {name}…") under each instruction textarea; validate names (non‑empty, reasonable length) with inline feedback.
 
 #### [ ⏳ ] Task 73 - Collapsible Settings Sections
 Make API Keys, Global Defaults, and Agents collapsible with remembered state to reduce vertical scrolling on smaller screens.
@@ -292,7 +290,8 @@ Add Playwright tests for: glass chat card present; message header/badge; input s
 
 ## 📊 Task Summary
 - **✅ Completed:** 12 tasks
-- **🔄 In Progress:** 7 tasks  
-- **⏳ Pending:** 55 tasks
+- **🔄 In Progress:** 1 task
+- **⚠️ Partially Implemented:** 4 tasks
+- **⏳ Pending:** 59 tasks
 - **❌ Cancelled:** 0 tasks
-- **📈 Total:** 74 tasks
+- **📈 Total:** 76 tasks

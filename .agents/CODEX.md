@@ -1,119 +1,91 @@
-# THE MAKE IT WORK FIRST MANIFESTO
+# THE MAKE IT WORK FIRST FIELD GUIDE
+
+CORE TRUTH
+Defensive code before functionality is theater.
+Prove it works. Then protect it.
+
+THE RULES
+1. Build the Happy Path First – Code that DOES the thing
+2. No Theoretical Defenses – Naked first version
+3. Learn from Real Failures – Fix reality, not ghosts
+4. Guard Only What Breaks – Add checks only for facts
+5. Keep the Engine Visible – Action, not paranoia
+
+ANTI-PATTERNS TO BURN
+❌ Fortress Validation
+❌ Defensive Exit Theater
+❌ Connection State Paranoia
+
+PATTERNS TO LIVE BY
+✅ Direct Execution
+✅ Natural Failure
+✅ Continuous Progress
+
+THE TEST
+Can someone grok your code in 10 seconds?
+YES → You lived the manifesto
+NO  → Delete defenses
+
+THE PROMISE
+Readable. Debuggable. Maintainable. Honest.
+
+THE METAPHOR
+Don’t bolt on airbags before the engine runs.
+First: make it move.
+Then: guard against real crashes.
+
+MAKE IT WORK FIRST.
+MAKE IT WORK ALWAYS.
+GUARDS EARN THEIR KEEP.
+
+# CHANGES BETWEEN ORIGINAL MANIFESTO AND FIELD GUIDE
 
 ## Core Truth
+- Original: "Every line of defensive code you write before proving your feature works is a lie..."
++ Field Guide: "Defensive code before functionality is theater. Prove it works. Then protect it."
+(Phrased shorter, sharper, no metaphor drift.)
 
-Every line of defensive code you write before proving your feature works is a lie you tell yourself about problems that don't exist.
+## Philosophy / Rules
+- Original had 5 sections with long explanations (e.g. “Write code that does the thing. Not checks...”)
++ Field Guide reduced to 5 short rules, one line each.
+(Compression: removed repetition, slogans instead of prose.)
 
-## The Philosophy
+## Anti-Patterns
+- Original: Full code samples showing Fortress Validation, Defensive Exit Theater, Connection State Paranoia.
++ Field Guide: Only names listed with ❌ icons.
+(Removed examples for poster readability.)
 
-### 1. Build the Happy Path FIRST
-Write code that does the thing. Not code that checks if it can do the thing. Not code that validates before doing the thing. Code that DOES THE THING.
+## Patterns We Embrace
+- Original: Full code samples for Direct Execution, Natural Failure, Continuous Progress.
++ Field Guide: Only names listed with ✅ icons.
+(Same compression—patterns as mantras.)
 
-### 2. No Blockers. No Validation. No Defensive Coding.
-Your first version should be naked functionality. Raw execution. Pure intent made manifest in code.
+## Mindset Shift
+- Original: "From: X → To: Y" contrasts across multiple lines.
++ Field Guide: Removed section entirely.
+(The core shift is implied by the rules; stripped for brevity.)
 
-### 3. Let It Fail Naturally
-When code fails, it should fail because of real problems, not artificial guards. Real failures teach. Defensive failures hide.
+## The Path
+- Original: 5 steps (Write It, Run It, Break It, Guard It, Ship It).
++ Field Guide: Removed entirely.
+(Field guide favors slogans, not process.)
 
-### 4. Add Guards ONLY for Problems That Actually Happen
-That null check? Did it actually blow up in production? No? Delete it.
-That validation? Did a user actually send bad data? No? Delete it.
-That try-catch? Did it actually throw? No? Delete it.
+## The Test
+- Original: "Can someone read your code and understand what it does in 10 seconds?"
++ Field Guide: "Can someone grok your code in 10 seconds?"
+(Simplified, kept essence.)
 
-### 5. Keep the Engine Visible
-You should be able to read code and immediately see what it does. Not what it's defending against. Not what it's validating. What it DOES.
+## The Promise
+- Original: Bullet list: Readable, Debuggable, Maintainable, Honest (with explanations).
++ Field Guide: "Readable. Debuggable. Maintainable. Honest."
+(Compressed into a chant-like line.)
 
-## The Anti-Patterns We Reject
+## The Metaphor
+- Original: "Don’t add airbags to a car that doesn’t have an engine yet..."
++ Field Guide: "Don’t bolt on airbags before the engine runs. First: make it move. Then: guard against real crashes."
+(Metaphor shortened, same spirit.)
 
-### ❌ Fortress Validation
-```javascript
-function doThing(x) {
-  if (!x) throw new Error('x is required');
-  if (typeof x !== 'string') throw new Error('x must be string');
-  if (x.length < 3) throw new Error('x too short');
-  if (x.length > 100) throw new Error('x too long');
-  // 50 more lines of validation...
-  
-  return x.toUpperCase(); // The actual work, buried
-}
-❌ Defensive Exit Theater
-if (!file) {
-  console.error('File not found');
-  process.exit(1);
-}
-if (!isValid(file)) {
-  console.error('Invalid file');
-  process.exit(1);
-}
-// 10 more exit conditions...
-❌ Connection State Paranoia
-if (!this.isConnected) {
-  await this.connect();
-}
-if (!this.isReady) {
-  await this.waitForReady();
-}
-if (!this.isAuthenticated) {
-  await this.authenticate();
-}
-// Finally maybe do something...
-The Patterns We Embrace
-✅ Direct Execution
-function doThing(x) {
-  return x.toUpperCase();
-}
-✅ Natural Failure
-const content = fs.readFileSync(file);
-const data = JSON.parse(content);
-processData(data);
-// If it fails, you'll know exactly where and why
-✅ Continuous Progress
-copyFileSync(file1, dest1);  // Works or fails
-copyFileSync(file2, dest2);  // Independent, continues
-copyFileSync(file3, dest3);  // Keep going with what works
-```
-**The Mindset Shift**
-
->- From: "What could go wrong?"
->    To: "What needs to work?"
->- From: "Defend against everything"
->    To: "Fix what actually breaks"
->- From: "Validate all inputs"
->    To: "Use the inputs"
->- From: "Handle all errors"
->    To: "Let errors surface"
-
-**The Implementation Path**
-
-1. Write It - Make the feature work with zero defense
-2. Run It - Does it actually do the job?
-3. Break It - Find real failure modes in actual use
-4. Guard It - Add minimal protection for real problems only
-5. Ship It - Your code is honest about what it does
-
-**The Test**
-Can someone read your code and understand what it does in 10 seconds?
-
-- YES: You followed the manifesto
-- NO: You have defensive code to delete
-
-**The Promise**
-Code written this way is:
-- Readable - The intent is obvious
-- Debuggable - Failures point to real problems
-- Maintainable - Less code, less complexity
-- Honest - It does what it says, nothing more
-
-**The Metaphor**
-Don't add airbags to a car that doesn't have an engine yet.
-First make it run. Then add safety features IF crashes actually happen.
-Most "defensive" code defends against problems that never occur while making the code harder to understand and fix.
-
-**The Call to Action**
-Stop writing code that apologizes for existing. Stop defending against theoretical problems. Stop hiding functionality behind validation fortresses.
-
-Write code that DOES THE THING. Fix real problems when they actually happen. Keep your code naked until reality demands clothes.
----
-This is the way.
-Make it work first. Make it work always. Make guards earn their keep.
----
+## Call to Action
+- Original: Long section: "Stop writing code that apologizes... Stop defending... Stop hiding..."
++ Field Guide: 3 bold lines: "MAKE IT WORK FIRST. MAKE IT WORK ALWAYS. GUARDS EARN THEIR KEEP."
+(Stripped to rallying cry.)ges

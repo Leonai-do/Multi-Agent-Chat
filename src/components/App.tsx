@@ -344,6 +344,7 @@ const App: FC = () => {
       // Step 2: Get refined responses sequentially
       try { addLog('info', 'Phase started', { phase: 'refinement-sequential' }); } catch {}
       try { logEvent('pipeline','info','phase_start', { runId: String(runToken), phase: 'refinement' }); } catch {}
+      // Collect refined responses for each agent
       const refinedResponses: string[] = Array(initialAgents.length).fill('');
       for (const agent of initialAgents) {
         if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
@@ -398,6 +399,7 @@ const App: FC = () => {
       
       // Step 3: Get the final synthesized response from the fifth agent
       const sourceListForSynthesizer = sources.map((s, i) => `Source [${i + 1}]: ${s.url}`).join('\n');
+
       const finalPrompt = `Here are the four refined responses from the agent team:\n\n${refinedResponses.map((r, i) => `Refined Response from Agent ${i + 1}:\n${r}`).join('\n\n---\n\n')}\n\n${sourceListForSynthesizer ? `Use these sources for citation:\n${sourceListForSynthesizer}\n\n` : ''}Synthesize these into a single, final, comprehensive answer for the user. Remember to add citations like [1], [2] etc. where appropriate.`;
       if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
       let finalText = '';

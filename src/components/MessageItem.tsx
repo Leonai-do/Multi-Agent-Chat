@@ -11,6 +11,7 @@ import CodeBlock from './CodeBlock';
 import CollaborationTraceView from './CollaborationTraceView';
 import EditPromptModal from './EditPromptModal';
 import { logEvent } from '../state/logs';
+import { getTraceDefaultOpen } from '../config';
 
 /**
  * Props for the MessageItem component.
@@ -32,12 +33,12 @@ interface MessageItemProps {
  * @returns {React.ReactElement} The rendered message item.
  */
 const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendMessage }) => {
-  // State for toggling the visibility of the collaboration trace
-  const [isTraceVisible, setIsTraceVisible] = useState(false);
   // State for switching between rendered Markdown and raw text view
   const [viewMode, setViewMode] = useState<'rendered' | 'raw'>('rendered');
   // State for managing the edit modal visibility for user messages
   const [isEditing, setIsEditing] = useState(false);
+  // Collapse/expand state for collaboration trace (default from settings; open by default)
+  const [isTraceVisible, setIsTraceVisible] = useState<boolean>(getTraceDefaultOpen());
 
   const messageText = message?.parts?.[0]?.text ?? '';
 
@@ -85,7 +86,7 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
 
   return (
     <>
-      <div className={`message-item ${message.collaborationTrace && isTraceVisible ? 'message-item--trace-visible' : ''}`}>
+      <div className={`message-item ${message.collaborationTrace ? 'message-item--trace-visible' : ''}`}>
         <div className={`message-item__wrapper message-item__wrapper--${message.role}`}>
             <div className="message-item__actions">
             {message.role === 'user' && (
@@ -115,6 +116,37 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
                 </span>
               </span>
             </div>
+
+            {/* Inline collaboration trace (collapsible) */}
+            {message.role === 'model' && message.collaborationTrace && isTraceVisible && (
+              <div
+                className="collaboration-inline"
+                style={{
+                  background: 'var(--panel-bg, rgba(0,0,0,0.04))',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '12px',
+                  padding: '0.75rem',
+                }}
+              >
+                <div style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: 'var(--secondary-text-color)',
+                  marginBottom: '0.5rem',
+                }}>
+                  Collaboration Trace:
+                </div>
+                <div className="agent-grid">
+                  <CollaborationTraceView trace={message.collaborationTrace} className="agent-grid" />
+                </div>
+              </div>
+            )}
+
+            {/* Divider after trace */}
+            {message.role === 'model' && message.collaborationTrace && isTraceVisible && (
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0.75rem 0 0.5rem 0' }} />
+            )}
+
             {viewMode === 'rendered' ? (
                 <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -156,25 +188,16 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
                     {viewMode === 'rendered' ? 'Raw' : 'Rendered'}
                 </button>
 
-                {message.collaborationTrace && (
-                    <button onClick={() => { const next = !isTraceVisible; try { logEvent('ui','info','trace_toggle', { messageId: message.id, open: next }); } catch {}; setIsTraceVisible(next); }} className="message-bubble__collaboration-toggle" aria-expanded={isTraceVisible}>
+                <button onClick={() => { const next = !isTraceVisible; try { logEvent('ui','info','trace_toggle', { messageId: message.id, open: next }); } catch {}; setIsTraceVisible(next); }} className="message-bubble__collaboration-toggle" aria-expanded={isTraceVisible}>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 15.5c-2.26 0-4.26-1.23-5.43-3.13.34-.39.64-.82.89-1.28.63.49 1.37.84 2.16 1.05V10.5h2v1.65c.79-.21 1.53-.56 2.16-1.05.25.46.55.89.89 1.28-1.17 1.9-3.17 3.13-5.43 3.13zM12 14c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm-7.5-1.5c-2.26 0-4.26-1.23-5.43-3.13C-.21 8.98 0 8.44 0 8c0-.44.21-.98.57-1.37C1.74 4.73 3.74 3.5 6 3.5c2.26 0 4.26 1.23 5.43 3.13-.34.39-.64.82-.89 1.28-.63-.49-1.37-.84-2.16-1.05V8.5h-2v-1.65c-.79.21-1.53.56-2.16 1.05-.25-.46-.55-.89-.89-1.28C4.76 4.73 2.76 3.5.5 3.5 2.76 3.5 4.76 4.73 5.93 6.63c.34.39.64.82.89 1.28.63-.49 1.37-.84 2.16-1.05V8.5h2v1.65c.79.21 1.53.56 2.16 1.05.25.46.55.89.89 1.28C10.24 14.27 8.24 15.5 6 15.5c-2.26 0-4.26-1.23-5.43-3.13.34-.39.64-.82.89-1.28-.63.49-1.37-.84-2.16-1.05V10.5h-2v-1.65c-.79.21-1.53-.56-2.16-1.05C1.74 6.27 3.74 7.5 6 7.5c2.26 0 4.26-1.23 5.43-3.13C11.79 4.02 12 4.56 12 5c0 .44-.21.98-.57 1.37C10.26 8.27 8.26 9.5 6 9.5s-4.26-1.23-5.43-3.13z"/></svg>
                     <span>{isTraceVisible ? 'Hide' : 'View'} Collaboration</span>
                     </button>
-                )}
                 </div>
             )}
             </div>
         </div>
 
-        {/* The collaboration trace view, visibility controlled by state */}
-        {message.collaborationTrace && (
-            <div className={`collaboration-trace-wrapper ${isTraceVisible ? 'collaboration-trace-wrapper--visible' : ''}`}>
-                <div className="collaboration-trace">
-                    <CollaborationTraceView trace={message.collaborationTrace} className="agent-grid" />
-                </div>
-            </div>
-        )}
+        {/* External collaboration wrapper removed (trace is inline above) */}
       </div>
 
       {/* Render the edit modal for user messages */}

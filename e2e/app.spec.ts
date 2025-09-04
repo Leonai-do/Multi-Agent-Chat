@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Multi-Agent Gemini Chat', () => {
+test.describe('Multi-Agent Chat', () => {
   test('loads and shows welcome', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('Welcome to Multi-Agent Gemini Chat')).toBeVisible();
+    await expect(page.getByText('Welcome to Multi-Agent Chat')).toBeVisible();
     await expect(page.locator('.chat-input__text-field')).toBeVisible();
   });
 
