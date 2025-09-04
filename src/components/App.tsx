@@ -223,17 +223,32 @@ const App: FC = () => {
     if (internetEnabled) {
       setLoadingMessage('Searching the web...');
       try {
-        const response = await fetch('/api/tools/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: prompt,
-            search_depth: 'basic',
-            include_raw_content: true,
-            max_results: 3,
-          }),
-          signal: generationControllerRef.current.signal,
-        });
+        const fetchWithRetry = async (attempts = 3): Promise<Response> => {
+          let last: Response | null = null;
+          for (let i = 1; i <= attempts; i++) {
+            last = await fetch('/api/tools/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                query: prompt,
+                search_depth: 'basic',
+                include_raw_content: true,
+                max_results: 3,
+              }),
+              signal: generationControllerRef.current.signal,
+            });
+            if (last.ok) return last;
+            // 5xx: backoff and retry
+            if (last.status >= 500 && i < attempts) {
+              await new Promise(r => setTimeout(r, 300 * i));
+              continue;
+            }
+            return last;
+          }
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          return last!;
+        };
+        const response = await fetchWithRetry(3);
         if (!response.ok) throw new Error(`Web search error: ${response.status} ${response.statusText}`);
         const searchData = await response.json();
         
@@ -252,7 +267,8 @@ const App: FC = () => {
           if (e?.name === 'AbortError' || signal.aborted) {
             // Silent cancel
           } else {
-            const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: `Sorry, I couldn't search the web. ${e.message}` }] };
+            const advice = e?.message?.includes('500') ? 'Ensure the server has TAVILY_API_KEY configured (see Settings → Providers & Models notes) and try again.' : '';
+            const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: `Sorry, I couldn't search the web. ${e.message}${advice ? `\n\nHint: ${advice}` : ''}` }] };
             setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
             try { logEvent('pipeline','error','web_search_failed', { runId: String(runToken), error: e?.message || String(e) }); } catch {}
           }

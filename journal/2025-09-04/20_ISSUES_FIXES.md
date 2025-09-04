@@ -24,6 +24,7 @@ Why:
 Follow-ups:
 - Align client step timeout with server idle; increase server idle timer.
 - Add minimal diagnostics for empty-stream vs aborted.
+ - Implemented client retry (3 attempts with backoff) and clearer 500 troubleshooting hint.
 Code:
 ```diff
 // Future change (planned)
