@@ -12,7 +12,10 @@ import ChatView from './ChatView';
 import { MODEL_NAME, INITIAL_SYSTEM_INSTRUCTION, REFINEMENT_SYSTEM_INSTRUCTION, SYNTHESIZER_SYSTEM_INSTRUCTION } from '../constants';
 import type { Chat, Message, LiveAgentState, CollaborationTrace, Source } from '../types';
 import { LS_CHATS_KEY, LS_TAVILY_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, LS_AGENT_INSTRUCTIONS, LS_AGENT_NAMES, getGeminiApiKey, getGroqApiKey } from '../config';
-import { generateGroqTextViaREST } from '../llm/groqRest';
+import { registerProvider, getProvider } from '../llm/registry';
+import type { ProviderName } from '../llm/provider';
+import GeminiProvider from '../llm/geminiProvider';
+import GroqProvider from '../llm/groqProvider';
 import { addLog, exportLogs } from '../state/logs';
 import GenerationController from '../state/generation';
 
@@ -85,6 +88,8 @@ const App: FC = () => {
 
   // Effect to initialize the Gemini API client and load data from localStorage
   useEffect(() => {
+    // Register providers once on app start
+    try { registerProvider(GeminiProvider); registerProvider(GroqProvider); } catch {}
     // Resolve Gemini API key from env
     const apiKey = getGeminiApiKey() || '';
     if (apiKey) {
@@ -277,16 +282,11 @@ const App: FC = () => {
           const provider = perAgentProviders[agent.id] || globalProvider;
           const model = perAgentModels[agent.id] || globalModel || MODEL_NAME;
           let text = '';
-          if (provider === 'groq') {
-            const groqKey = getGroqApiKey();
-            if (!groqKey) throw new Error('Groq API key not set');
-            const sys = `You are ${namesLocal[agent.id]}. ${agentInstructions[agent.id]}`;
-            text = await generateGroqTextViaREST({ apiKey: groqKey, model, system: sys, prompt: promptForAgents, signal: generationControllerRef.current.signal });
-          } else {
-            const sys = `You are ${namesLocal[agent.id]}. ${agentInstructions[agent.id]}`;
-            const response = await ai.models.generateContent({ model, contents: [{ role: 'user', parts: [{ text: promptForAgents }] }], config: { systemInstruction: sys } });
-            text = response.text ?? '';
-          }
+          const sys = `You are ${namesLocal[agent.id]}. ${agentInstructions[agent.id]}`;
+          const pName = provider as ProviderName;
+          const p = getProvider(pName);
+          if (!p) throw new Error(`Provider not registered: ${pName}`);
+          text = await p.generateText({ model, prompt: promptForAgents, system: sys, signal: generationControllerRef.current.signal });
           if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
           setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
           addLog('debug', 'Initial response', { agent: agent.id, provider, model, length: text.length });
@@ -304,14 +304,10 @@ const App: FC = () => {
           const otherResponses = initialResponses.map((resp, i) => `Response from Agent ${i + 1}:\n${resp}`).join('\n\n---\n\n');
           const refinementPrompt = `Your original instruction was: "You are ${namesLocal[agentIndex]}. ${agentInstructions[agentIndex]}"\n\nHere are the initial responses from all four agents, including your own:\n\n${otherResponses}\n\nPlease critically evaluate all responses. Identify weaknesses, inconsistencies, or factual errors. Then, generate a new, superior response that improves upon these initial drafts.`;
           let text = '';
-          if (provider === 'groq') {
-            const groqKey = getGroqApiKey();
-            if (!groqKey) throw new Error('Groq API key not set');
-            text = await generateGroqTextViaREST({ apiKey: groqKey, model, system: REFINEMENT_SYSTEM_INSTRUCTION, prompt: refinementPrompt, signal: generationControllerRef.current.signal });
-          } else {
-            const response = await ai.models.generateContent({ model, contents: [{ role: 'user', parts: [{ text: refinementPrompt }] }], config: { systemInstruction: REFINEMENT_SYSTEM_INSTRUCTION } });
-            text = response.text ?? '';
-          }
+          const pName = provider as ProviderName;
+          const p = getProvider(pName);
+          if (!p) throw new Error(`Provider not registered: ${pName}`);
+          text = await p.generateText({ model, prompt: refinementPrompt, system: REFINEMENT_SYSTEM_INSTRUCTION, signal: generationControllerRef.current.signal });
           if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
           setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text, status: 'done' } : a));
           addLog('debug', 'Refined response', { agent: agent.id, provider, model, length: text.length });
@@ -327,14 +323,9 @@ const App: FC = () => {
       {
         const provider = globalProvider;
         const model = globalModel || MODEL_NAME;
-        if (provider === 'groq') {
-          const groqKey = getGroqApiKey();
-          if (!groqKey) throw new Error('Groq API key not set');
-          finalText = await generateGroqTextViaREST({ apiKey: groqKey, model, system: SYNTHESIZER_SYSTEM_INSTRUCTION, prompt: finalPrompt, signal: generationControllerRef.current.signal });
-        } else {
-          const finalResponse = await ai.models.generateContent({ model, contents: [{ role: 'user', parts: [{ text: finalPrompt }] }], config: { systemInstruction: SYNTHESIZER_SYSTEM_INSTRUCTION } });
-          finalText = finalResponse.text ?? '';
-        }
+        const p = getProvider(provider as ProviderName);
+        if (!p) throw new Error(`Provider not registered: ${provider}`);
+        finalText = await p.generateText({ model, prompt: finalPrompt, system: SYNTHESIZER_SYSTEM_INSTRUCTION, signal: generationControllerRef.current.signal });
         addLog('info', 'Final synthesized response', { provider, model, length: finalText.length });
       }
       
