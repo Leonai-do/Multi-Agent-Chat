@@ -46,6 +46,12 @@ export interface Message {
   parts: { text: string }[];
   collaborationTrace?: CollaborationTrace;
   sources?: Source[];
+  /** Epoch ms when the message was created. */
+  createdAt?: number;
+  /** Optional provider label for model messages (e.g., 'gemini' | 'groq'). */
+  provider?: string;
+  /** Optional model identifier for model messages. */
+  model?: string;
 }
 
 /**

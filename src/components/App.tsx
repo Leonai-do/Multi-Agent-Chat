@@ -330,7 +330,7 @@ const App: FC = () => {
       }
       
       const collaborationTrace: CollaborationTrace = { initialResponses, refinedResponses };
-      const modelMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: finalText }], collaborationTrace, sources: sources.length > 0 ? sources : undefined };
+      const modelMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: finalText }], collaborationTrace, sources: sources.length > 0 ? sources : undefined, createdAt: Date.now(), provider, model };
       
       // Add the final model message to the active chat
       setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, modelMessage] } : c));
@@ -357,7 +357,7 @@ const App: FC = () => {
         // push notice and log
         try { addLog('error', 'Run failed', { error: (error as any)?.message || String(error) }); } catch {}
         try { pushNotice('error', `Run failed: ${(error as any)?.message || String(error)}`); } catch {}
-        const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: 'Sorry, something went wrong. Please check the console for details.' }] };
+        const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: 'Sorry, something went wrong. Please check the console for details.' }], createdAt: Date.now() };
         setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
       }
     } finally {
@@ -376,7 +376,8 @@ const App: FC = () => {
     if (!input.trim() || isLoading) return;
     
     const promptText = input;
-    const userMessage: Message = { id: Date.now().toString(), role: 'user', parts: [{ text: promptText }] };
+    const now = Date.now();
+    const userMessage: Message = { id: now.toString(), role: 'user', parts: [{ text: promptText }], createdAt: now };
     let currentChatId = activeChatId;
     let isNewChat = false;
 

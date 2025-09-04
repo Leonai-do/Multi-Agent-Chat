@@ -91,6 +91,22 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
             </button>
             </div>
             <div className={`message-bubble message-bubble--${message.role}`} onDoubleClick={message.role === 'user' ? () => setIsEditing(true) : undefined}>
+            {/* Message header */}
+            <div className="message-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'0.5rem',marginBottom:'0.25rem'}}>
+              <span className="message-header__name" style={{fontWeight:600,fontSize:'0.9rem'}}>
+                {message.role === 'user' ? 'You' : 'Assistant'}
+              </span>
+              <span style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+                {message.role === 'model' && message.provider && (
+                  <span className="badge" title={message.model || ''} style={{padding:'0.15rem 0.5rem',borderRadius:'999px',border:'1px solid var(--border-color)',fontSize:'0.75rem',color:'var(--secondary-text-color)'}}>
+                    {message.provider}{message.model ? ` · ${message.model}` : ''}
+                  </span>
+                )}
+                <span className="message-header__time" style={{fontSize:'0.75rem',color:'var(--secondary-text-color)'}}>
+                  {message.createdAt ? new Date(message.createdAt).toLocaleTimeString() : ''}
+                </span>
+              </span>
+            </div>
             {viewMode === 'rendered' ? (
                 <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
