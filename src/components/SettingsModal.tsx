@@ -56,6 +56,10 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
   const [functionsEnabled, setFunctionsEnabled] = useState<boolean>(false);
   // Rendering defaults
   const [traceDefaultOpen, setTraceDefaultOpen] = useState<boolean>(true);
+  // Internet & Tools
+  const [internetEnabledFlag, setInternetEnabledFlag] = useState<boolean>(false);
+  const [includeWebResults, setIncludeWebResults] = useState<boolean>(true);
+  const [maxWebSources, setMaxWebSources] = useState<number>(3);
   const fetchAbortRef = React.useRef<AbortController | null>(null);
   // Feedback messages (floating)
   type Feedback = { id: number; type: 'success' | 'error' | 'info'; text: string };
@@ -218,6 +222,9 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
       localStorage.setItem(LS_FLAG_VISION, visionEnabled ? '1' : '0');
       localStorage.setItem(LS_FLAG_FUNCTIONS, functionsEnabled ? '1' : '0');
       localStorage.setItem(LS_TRACE_DEFAULT_OPEN, traceDefaultOpen ? '1' : '0');
+      try { localStorage.setItem('flag-internet-enabled', internetEnabledFlag ? '1' : '0'); } catch {}
+      try { localStorage.setItem('tools-include-web', includeWebResults ? '1' : '0'); } catch {}
+      try { localStorage.setItem('tools-max-sources', String(Math.min(Math.max(1, maxWebSources || 3), 10))); } catch {}
     } catch {}
     try { logEvent('settings','info','save_all', { instructionsLength: currentInstructions.map(x=>x.length), names: currentNames, globalProvider, globalModel, perAgentProviders, perAgentModels, visionEnabled, functionsEnabled }); } catch {}
     onClose();
@@ -407,6 +414,29 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
                       <input type="checkbox" checked={traceDefaultOpen} onChange={(e) => setTraceDefaultOpen(e.target.checked)} aria-label="Keep collaboration trace open by default" />
                       <span>Keep collaboration trace open by default</span>
                     </label>
+                  </div>
+                </div>
+                <div className="section-card">
+                  <div className="section-card__title">Internet & Tools</div>
+                  <div className="section-card__desc">Control web access and default behavior for integrated tools.</div>
+                  <div className="form-row">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input type="checkbox" checked={internetEnabledFlag} onChange={(e) => setInternetEnabledFlag(e.target.checked)} aria-label="Enable Internet features" />
+                      <span>Enable Internet features</span>
+                    </label>
+                  </div>
+                  <div className="form-row">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input type="checkbox" checked={includeWebResults} onChange={(e) => setIncludeWebResults(e.target.checked)} aria-label="Include web results by default" />
+                      <span>Include web results by default</span>
+                    </label>
+                  </div>
+                  <div className="form-row">
+                    <span className="form-row__label">Max sources</span>
+                    <input type="number" min={1} max={10} value={maxWebSources} onChange={(e)=> setMaxWebSources(parseInt(e.target.value || '3', 10))} className="input" aria-label="Max sources for web search" />
+                  </div>
+                  <div className="section-card__desc" style={{ marginTop: '0.5rem' }}>
+                    Note: API calls are proxied by the app server. Set <code>TAVILY_API_KEY</code> on the server.
                   </div>
                 </div>
               </>

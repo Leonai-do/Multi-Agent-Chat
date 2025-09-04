@@ -11,7 +11,7 @@ import SettingsModal from './SettingsModal';
 import ChatView from './ChatView';
 import { MODEL_NAME, INITIAL_SYSTEM_INSTRUCTION, REFINEMENT_SYSTEM_INSTRUCTION, SYNTHESIZER_SYSTEM_INSTRUCTION } from '../constants';
 import type { Chat, Message, LiveAgentState, CollaborationTrace, Source } from '../types';
-import { LS_CHATS_KEY, LS_TAVILY_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, LS_AGENT_INSTRUCTIONS, LS_AGENT_NAMES, getGeminiApiKey, getGroqApiKey } from '../config';
+import { LS_CHATS_KEY, LS_TAVILY_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, LS_AGENT_INSTRUCTIONS, LS_AGENT_NAMES, getGeminiApiKey, getGroqApiKey, getIncludeWebResults, getMaxWebSources } from '../config';
 import { registerProvider, getProvider } from '../llm/registry';
 import type { ProviderName } from '../llm/provider';
 import GeminiProvider from '../llm/geminiProvider';
@@ -252,7 +252,8 @@ const App: FC = () => {
         if (!response.ok) throw new Error(`Web search error: ${response.status} ${response.statusText}`);
         const searchData = await response.json();
         
-        sources = (searchData.results || []).map((r: any): Source => ({
+        const maxSources = getMaxWebSources();
+        sources = (searchData.results || []).slice(0, maxSources).map((r: any): Source => ({
             title: r.title,
             url: r.url,
             content: r.raw_content || '',

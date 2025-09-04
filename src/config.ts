@@ -22,6 +22,9 @@ export const LS_MODEL_PER_AGENT = 'model-per-agent';
 export const LS_FLAG_VISION = 'flag-vision-enabled';
 export const LS_FLAG_FUNCTIONS = 'flag-functions-enabled';
 export const LS_TRACE_DEFAULT_OPEN = 'trace-default-open';
+export const LS_FLAG_INTERNET = 'flag-internet-enabled';
+export const LS_TOOLS_INCLUDE_WEB = 'tools-include-web';
+export const LS_TOOLS_MAX_SOURCES = 'tools-max-sources';
 
 /**
  * Resolve Gemini API key from environment.
@@ -67,4 +70,23 @@ export const getTraceDefaultOpen = (): boolean => {
   } catch {
     return true;
   }
+};
+
+export const getInternetEnabledFlag = (): boolean => {
+  try { return localStorage.getItem(LS_FLAG_INTERNET) === '1'; } catch { return false; }
+};
+
+export const getIncludeWebResults = (): boolean => {
+  try {
+    const v = localStorage.getItem(LS_TOOLS_INCLUDE_WEB);
+    return v === null ? true : v === '1';
+  } catch { return true; }
+};
+
+export const getMaxWebSources = (): number => {
+  try {
+    const v = parseInt(localStorage.getItem(LS_TOOLS_MAX_SOURCES) || '3', 10);
+    if (Number.isNaN(v)) return 3;
+    return Math.min(Math.max(1, v), 10);
+  } catch { return 3; }
 };

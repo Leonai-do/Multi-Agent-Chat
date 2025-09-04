@@ -50,11 +50,12 @@ rationale: "Protect Tavily API key via server proxy; route client requests to /a
 Provide ONLY the minimal diff(s):
 ```diff
 // vite.config.ts
-@@ configureServer
++// add proxy endpoint
 +server.middlewares.use('/api/tools/search', async (req, res) => { /* POST → tavily.com/search using server env key */ });
 
 // src/components/App.tsx
 @@ if (internetEnabled)
 -const response = await fetch('https://api.tavily.com/search', { body: JSON.stringify({ api_key: tavilyApiKey, query, ... }) })
 +const response = await fetch('/api/tools/search', { body: JSON.stringify({ query, search_depth: 'basic', include_raw_content: true, max_results: 3 }) })
++// added fetchWithRetry for transient 5xx
 ```
