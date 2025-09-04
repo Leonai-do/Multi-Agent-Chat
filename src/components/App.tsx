@@ -9,35 +9,29 @@ import { useTheme } from '../hooks/useTheme';
 import Sidebar from './Sidebar';
 import SettingsModal from './SettingsModal';
 import ChatView from './ChatView';
-import { MODEL_NAME, INITIAL_SYSTEM_INSTRUCTION, REFINEMENT_SYSTEM_INSTRUCTION, SYNTHESIZER_SYSTEM_INSTRUCTION } from '../constants';
-import type { Chat, Message, LiveAgentState, CollaborationTrace, Source } from '../types';
-import { LS_CHATS_KEY, LS_TAVILY_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, LS_AGENT_INSTRUCTIONS, LS_AGENT_NAMES, getGeminiApiKey, getGroqApiKey, getIncludeWebResults, getMaxWebSources } from '../config';
-import { registerProvider, getProvider } from '../llm/registry';
-import type { ProviderName } from '../llm/provider';
+import { INITIAL_SYSTEM_INSTRUCTION, MODEL_NAME } from '../constants';
+import type { Chat, Message } from '../types';
+import { LS_CHATS_KEY, LS_TAVILY_KEY, LS_AGENT_INSTRUCTIONS, LS_AGENT_NAMES, getGeminiApiKey, LS_AGENT_COUNT } from '../config';
+import { registerProvider } from '../llm/registry';
 import GeminiProvider from '../llm/geminiProvider';
 import GroqProvider from '../llm/groqProvider';
-import { addLog, exportLogs, logEvent } from '../state/logs';
+import { exportLogs, logEvent } from '../state/logs';
 import GenerationController from '../state/generation';
+import { runAgentCollaboration } from '../agents/collaborationOrchestrator';
 
-/**
- * Sanitize and normalize a generated chat title to be short, plain text.
- * - Remove common Markdown punctuation
- * - Strip surrounding quotes
- * - Limit to 5 words and 64 chars
- */
 const sanitizeTitle = (t: string): string => {
-  try {
-    let s = (t || '').replace(/[`*_#>\[\]()]/g, '');
-    s = s.replace(/^\s*"+|"+\s*$/g, '');
-    s = s.replace(/\s+/g, ' ').trim();
-    if (!s) return 'New Chat';
-    s = s.split(' ').slice(0, 5).join(' ');
-    if (s.length > 64) s = s.slice(0, 64).trim();
-    return s;
-  } catch {
-    return 'New Chat';
-  }
-};
+    try {
+      let s = (t || '').replace(/[`*_#>[\]()]/g, '');
+      s = s.replace(/^\s*"|"+\s*$/g, '');
+      s = s.replace(/\s+/g, ' ').trim();
+      if (!s) return 'New Chat';
+      s = s.split(' ').slice(0, 5).join(' ');
+      if (s.length > 64) s = s.slice(0, 64).trim();
+      return s;
+    } catch {
+      return 'New Chat';
+    }
+  };
 
 /**
  * The main App component.
@@ -58,14 +52,16 @@ const App: FC = () => {
   // Ref to hold the initialized GoogleGenAI instance
   const aiRef = useRef<GoogleGenAI | null>(null);
   // State for the real-time status of collaborating agents
-  const [currentCollaborationState, setCurrentCollaborationState] = useState<LiveAgentState[]>([]);
+  const [currentCollaborationState, setCurrentCollaborationState] = useState<any[]>([]);
   // State for showing/hiding the live agent workspace
   const [showCollaboration, setShowCollaboration] = useState(false);
   // State for the settings modal visibility
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   // State for the customizable system instructions and names for the agents
-  const [agentInstructions, setAgentInstructions] = useState<string[]>(() => Array(4).fill(INITIAL_SYSTEM_INSTRUCTION));
-  const [agentNames, setAgentNames] = useState<string[]>(() => Array(4).fill('').map((_, i) => `Agent ${i + 1}`));
+  const [agentInstructions, setAgentInstructions] = useState<string[]>([]);
+  const [agentNames, setAgentNames] = useState<string[]>([]);
+  const [agentCount, setAgentCount] = useState<number>(4);
+
   // State for sidebar visibility, especially on mobile
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
   // State for enabling/disabling internet access
@@ -111,13 +107,35 @@ const App: FC = () => {
       const savedTavilyKey = localStorage.getItem(LS_TAVILY_KEY);
       if (savedTavilyKey) setTavilyApiKey(savedTavilyKey);
 
+      const count = parseInt(localStorage.getItem(LS_AGENT_COUNT) || '4', 10);
+      setAgentCount(count);
+
       const savedInstr = localStorage.getItem(LS_AGENT_INSTRUCTIONS);
       if (savedInstr) {
-        try { const arr = JSON.parse(savedInstr); if (Array.isArray(arr) && arr.length) setAgentInstructions(arr); } catch {}
+        try { 
+          const arr = JSON.parse(savedInstr); 
+          if (Array.isArray(arr) && arr.length) { 
+            setAgentInstructions(arr); 
+          } else {
+            setAgentInstructions(Array(count).fill(INITIAL_SYSTEM_INSTRUCTION));
+          }
+        } catch {}
+      } else {
+        setAgentInstructions(Array(count).fill(INITIAL_SYSTEM_INSTRUCTION));
       }
+
       const savedNames = localStorage.getItem(LS_AGENT_NAMES);
       if (savedNames) {
-        try { const arr = JSON.parse(savedNames); if (Array.isArray(arr) && arr.length) setAgentNames(arr); } catch {}
+        try { 
+          const arr = JSON.parse(savedNames); 
+          if (Array.isArray(arr) && arr.length) { 
+            setAgentNames(arr); 
+          } else {
+            setAgentNames(Array(count).fill('').map((_, i) => `Agent ${i + 1}`));
+          }
+        } catch {}
+      } else {
+        setAgentNames(Array(count).fill('').map((_, i) => `Agent ${i + 1}`));
       }
 
     } catch (error) {
@@ -161,6 +179,7 @@ const App: FC = () => {
   const handleSaveAgentSettings = (newInstructions: string[], newNames: string[]) => {
     setAgentInstructions(newInstructions);
     setAgentNames(newNames);
+    setAgentCount(newInstructions.length);
   };
 
   /** Sets the active chat to null, effectively showing the welcome screen to start a new chat. */
@@ -175,367 +194,6 @@ const App: FC = () => {
     try { logEvent('chat','info','chat_deleted', { chatId: id }); } catch {}
     if (activeChatId === id) {
       setActiveChatId(null);
-    }
-  };
-
-  /**
-   * The core logic for the multi-agent collaboration process.
-   * @param {string} prompt - The user's input prompt.
-   * @param {string} chatId - The ID of the chat to add the response to.
-   * @param {boolean} isNewChat - Flag indicating if this is the first message in a new chat (for title generation).
-   */
-  const runAgentCollaboration = async (prompt: string, chatId: string, isNewChat: boolean) => {
-    // Begin a new generation run and create an abort signal
-    const runToken = generationControllerRef.current.start();
-    try { logEvent('pipeline','info','run_start', { runId: String(runToken), chatId, prompt, internetEnabled }); } catch {}
-    setRunStartTs(Date.now());
-    const signal = generationControllerRef.current.signal;
-    setIsLoading(true);
-    setShowCollaboration(true);
-    setLoadingMessage('');
-    setProgressDone(0);
-    setProgressTotal((internetEnabled ? 1 : 0) + 4 + 4 + 1);
-
-    let webContext = '';
-    let sources: Source[] = [];
-    // Defensive: resolve agent names fallback to avoid runtime ReferenceError in templates
-    const namesLocal: string[] = (Array.isArray(agentNames) && agentNames.length)
-      ? agentNames
-      : Array(4).fill('').map((_, i) => `Agent ${i + 1}`);
-    // Load provider/model preferences
-    const count = 4;
-    let globalProvider: 'gemini'|'groq' = 'gemini';
-    let perAgentProviders: Array<'gemini'|'groq'> = Array(count).fill('gemini');
-    let globalModel: string | undefined = undefined;
-    let perAgentModels: string[] = Array(count).fill('');
-    try {
-      const gp = (localStorage.getItem(LS_PROVIDER_GLOBAL) as any) || 'gemini';
-      const pa = JSON.parse(localStorage.getItem(LS_PROVIDER_PER_AGENT) || '[]');
-      const gm = localStorage.getItem(LS_MODEL_GLOBAL) || '';
-      const pam = JSON.parse(localStorage.getItem(LS_MODEL_PER_AGENT) || '[]');
-      globalProvider = (gp === 'groq') ? 'groq' : 'gemini';
-      perAgentProviders = Array(count).fill(globalProvider).map((v, i) => (pa[i] === 'groq' ? 'groq' : (pa[i] === 'gemini' ? 'gemini' : globalProvider)));
-      globalModel = gm || undefined;
-      perAgentModels = Array(count).fill(globalModel || '').map((v, i) => pam[i] || v);
-    } catch {}
-
-    // Step 0: Perform web search if internet is enabled
-    if (internetEnabled) {
-      setLoadingMessage('Searching the web...');
-      try {
-        const fetchWithRetry = async (attempts = 3): Promise<Response> => {
-          let last: Response | null = null;
-          for (let i = 1; i <= attempts; i++) {
-            last = await fetch('/api/tools/search', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                query: prompt,
-                search_depth: 'basic',
-                include_raw_content: true,
-                max_results: 3,
-              }),
-              signal: generationControllerRef.current.signal,
-            });
-            if (last.ok) return last;
-            // 5xx: backoff and retry
-            if (last.status >= 500 && i < attempts) {
-              await new Promise(r => setTimeout(r, 300 * i));
-              continue;
-            }
-            return last;
-          }
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          return last!;
-        };
-        const response = await fetchWithRetry(3);
-        if (!response.ok) throw new Error(`Web search error: ${response.status} ${response.statusText}`);
-        const searchData = await response.json();
-        
-        const maxSources = getMaxWebSources();
-        sources = (searchData.results || []).slice(0, maxSources).map((r: any): Source => ({
-            title: r.title,
-            url: r.url,
-            content: r.raw_content || '',
-        })).filter(s => s.content);
-
-        if (sources.length > 0) {
-            webContext = "Here is some context from a web search. Use this to inform your answer:\n\n" + 
-                sources.map((s, i) => `Source [${i + 1}] (${s.title}):\n${s.content}`).join('\n\n---\n\n');
-        }
-      } catch (e: any) {
-          console.error("Failed to fetch from Tavily API", e);
-          if (e?.name === 'AbortError' || signal.aborted) {
-            // Silent cancel
-          } else {
-            const advice = e?.message?.includes('500') ? 'Ensure the server has TAVILY_API_KEY configured (see Settings → Providers & Models notes) and try again.' : '';
-            const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: `Sorry, I couldn't search the web. ${e.message}${advice ? `\n\nHint: ${advice}` : ''}` }] };
-            setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
-            try { logEvent('pipeline','error','web_search_failed', { runId: String(runToken), error: e?.message || String(e) }); } catch {}
-          }
-          setIsLoading(false);
-          // keep workspace content as-is on abort/error; just reset progress
-          setLoadingMessage('');
-          setProgressDone(0);
-          setProgressTotal(0);
-          generationControllerRef.current.finish(runToken);
-          return;
-      }
-      // web search finished successfully
-      setProgressDone(d => d + 1);
-      try { logEvent('pipeline','info','web_search_done', { runId: String(runToken), sources: sources.length }); } catch {}
-    }
-    
-    setLoadingMessage('Agents are collaborating...');
-    try { addLog('info', 'Phase started', { phase: 'initial' }); } catch {}
-    try { logEvent('pipeline','info','phase_start', { runId: String(runToken), phase: 'initial' }); } catch {}
-    // Initialize live agent state for the UI
-    const initialAgents: LiveAgentState[] = Array.from({ length: 4 }, (_, i) => ({ id: i, status: 'initializing', response: '' }));
-    setCurrentCollaborationState(initialAgents);
-    
-    // Note: We no longer require GoogleGenAI client to run the pipeline.
-    // Providers handle generation; the Google client is only used optionally for title.
-      
-    try {
-      const promptForAgents = webContext ? `${webContext}\n\nBased on the context above, please answer the following user query:\n${prompt}` : prompt;
-      
-      // Step 1: Get initial responses sequentially (one agent at a time)
-      const initialResponses: string[] = Array(initialAgents.length).fill('');
-      for (const agent of initialAgents) {
-        if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        setLoadingMessage(`Writing: Agent ${agent.id + 1}/4`);
-        const provider = perAgentProviders[agent.id] || globalProvider;
-        const model = perAgentModels[agent.id] || globalModel || MODEL_NAME;
-        const sys = `You are ${namesLocal[agent.id]}. ${agentInstructions[agent.id]}`;
-        const pName = provider as ProviderName;
-        const p = getProvider(pName);
-        if (!p) throw new Error(`Provider not registered: ${pName}`);
-        setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, status: 'writing', response: '' } : a));
-        try { logEvent('pipeline','info','agent_step_start', { runId: String(runToken), phase: 'initial', agentId: agent.id, provider, model }); } catch {}
-        let text = '';
-        const canStream = !!(p.capabilities?.streaming && typeof p.generateStream === 'function');
-        // Per-step timeout (25s) to avoid hanging on network issues
-        const stepController = new AbortController();
-        const stepTimer = setTimeout(() => { try { stepController.abort(); } catch {} }, 25000);
-        const stepSignal = (AbortSignal as any)?.any ? (AbortSignal as any).any([generationControllerRef.current.signal, stepController.signal]) : stepController.signal;
-        try {
-          if (canStream) {
-            let acc = '';
-            let chunkCount = 0;
-            for await (const chunk of p.generateStream({ model, prompt: promptForAgents, system: sys, signal: stepSignal })) {
-              if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-              clearTimeout(stepTimer); // first chunk arrived
-              acc += chunk || '';
-              chunkCount++;
-              const safeAcc = acc;
-              setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: safeAcc } : a));
-              try { logEvent('pipeline','debug','agent_step_chunk', { runId: String(runToken), phase: 'initial', agentId: agent.id, chunkLen: (chunk||'').length, chunks: chunkCount }); } catch {}
-            }
-            text = acc;
-          } else {
-            text = await p.generateText({ model, prompt: promptForAgents, system: sys, signal: stepSignal });
-            if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-            clearTimeout(stepTimer);
-            setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
-          }
-        } catch (e: any) {
-          clearTimeout(stepTimer);
-          if (generationControllerRef.current.signal.aborted) throw e; // global abort
-          // Per-step timeout or fetch error: record and continue with next agent
-          try { addLog('error', 'Initial step failed', { agent: agent.id, error: e?.message || String(e) }); } catch {}
-          text = '';
-          setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
-        }
-        setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, status: 'done' } : a));
-        setProgressDone(d => d + 1);
-        addLog('debug', 'Initial response', { agent: agent.id, provider, model, length: text.length });
-        try { logEvent('pipeline','info','agent_step_done', { runId: String(runToken), phase: 'initial', agentId: agent.id, length: text.length }); } catch {}
-        initialResponses[agent.id] = text;
-      }
-      
-      // Step 2: Get refined responses sequentially
-      try { addLog('info', 'Phase started', { phase: 'refinement-sequential' }); } catch {}
-      try { logEvent('pipeline','info','phase_start', { runId: String(runToken), phase: 'refinement' }); } catch {}
-      // Collect refined responses for each agent
-      const refinedResponses: string[] = Array(initialAgents.length).fill('');
-      for (const agent of initialAgents) {
-        if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        setLoadingMessage(`Refining: Agent ${agent.id + 1}/4`);
-        const provider = perAgentProviders[agent.id] || globalProvider;
-        const model = perAgentModels[agent.id] || globalModel || MODEL_NAME;
-        const otherResponses = initialResponses.map((resp, i) => `Response from Agent ${i + 1}:\n${resp}`).join('\n\n---\n\n');
-        const refinementPrompt = `Your original instruction was: "You are ${namesLocal[agent.id]}. ${agentInstructions[agent.id]}"\n\nHere are the initial responses from all four agents, including your own:\n\n${otherResponses}\n\nPlease critically evaluate all responses. Identify weaknesses, inconsistencies, or factual errors. Then, generate a new, superior response that improves upon these initial drafts.`;
-        const pName = provider as ProviderName;
-        const p = getProvider(pName);
-        if (!p) throw new Error(`Provider not registered: ${pName}`);
-        setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, status: 'refining', response: '' } : a));
-        try { logEvent('pipeline','info','agent_step_start', { runId: String(runToken), phase: 'refinement', agentId: agent.id, provider, model }); } catch {}
-        let text = '';
-        const canStream = !!(p.capabilities?.streaming && typeof p.generateStream === 'function');
-        const stepController = new AbortController();
-        const stepTimer = setTimeout(() => { try { stepController.abort(); } catch {} }, 25000);
-        const stepSignal = (AbortSignal as any)?.any ? (AbortSignal as any).any([generationControllerRef.current.signal, stepController.signal]) : stepController.signal;
-        try {
-          if (canStream) {
-            let acc = '';
-            let chunkCount = 0;
-            for await (const chunk of p.generateStream({ model, prompt: refinementPrompt, system: REFINEMENT_SYSTEM_INSTRUCTION, signal: stepSignal })) {
-              if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-              clearTimeout(stepTimer);
-              acc += chunk || '';
-              chunkCount++;
-              const safeAcc = acc;
-              setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: safeAcc } : a));
-              try { logEvent('pipeline','debug','agent_step_chunk', { runId: String(runToken), phase: 'refinement', agentId: agent.id, chunkLen: (chunk||'').length, chunks: chunkCount }); } catch {}
-            }
-            text = acc;
-          } else {
-            text = await p.generateText({ model, prompt: refinementPrompt, system: REFINEMENT_SYSTEM_INSTRUCTION, signal: stepSignal });
-            if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-            clearTimeout(stepTimer);
-            setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
-          }
-        } catch (e: any) {
-          clearTimeout(stepTimer);
-          if (generationControllerRef.current.signal.aborted) throw e;
-          try { addLog('error', 'Refine step failed', { agent: agent.id, error: e?.message || String(e) }); } catch {}
-          text = '';
-          setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
-        }
-        setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, status: 'done' } : a));
-        setProgressDone(d => d + 1);
-        addLog('debug', 'Refined response', { agent: agent.id, provider, model, length: text.length });
-        try { logEvent('pipeline','info','agent_step_done', { runId: String(runToken), phase: 'refinement', agentId: agent.id, length: text.length }); } catch {}
-        refinedResponses[agent.id] = text;
-      }
-      
-      // Step 3: Get the final synthesized response from the fifth agent
-      const sourceListForSynthesizer = sources.map((s, i) => `Source [${i + 1}]: ${s.url}`).join('\n');
-
-      const finalPrompt = `Here are the four refined responses from the agent team:\n\n${refinedResponses.map((r, i) => `Refined Response from Agent ${i + 1}:\n${r}`).join('\n\n---\n\n')}\n\n${sourceListForSynthesizer ? `Use these sources for citation:\n${sourceListForSynthesizer}\n\n` : ''}Synthesize these into a single, final, comprehensive answer for the user. Remember to add citations like [1], [2] etc. where appropriate.`;
-      if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-      let finalText = '';
-      let streamedFinal = false;
-      const finalProvider = globalProvider;
-      const finalModel = globalModel || MODEL_NAME;
-      {
-        const p = getProvider(finalProvider as ProviderName);
-        if (!p) throw new Error(`Provider not registered: ${finalProvider}`);
-        try { addLog('info', 'Phase started', { phase: 'final' }); } catch {}
-        try { logEvent('pipeline','info','phase_start', { runId: String(runToken), phase: 'final' }); } catch {}
-        setLoadingMessage('Synthesizing final answer...');
-        if (p.capabilities?.streaming && typeof p.generateStream === 'function') {
-          streamedFinal = true;
-          let acc = '';
-          const stepController = new AbortController();
-          const stepTimer = setTimeout(() => { try { stepController.abort(); } catch {} }, 30000);
-          const stepSignal = (AbortSignal as any)?.any ? (AbortSignal as any).any([generationControllerRef.current.signal, stepController.signal]) : stepController.signal;
-          let finalMessageId: string | null = null;
-          let chunkCount = 0;
-          for await (const chunk of p.generateStream({ model: finalModel, prompt: finalPrompt, system: SYNTHESIZER_SYSTEM_INSTRUCTION, signal: stepSignal })) {
-            if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-            clearTimeout(stepTimer);
-            acc += chunk || '';
-            chunkCount++;
-            const textNow = acc;
-            if (!finalMessageId) {
-              // Create a provisional message and append it to chat
-              finalMessageId = (Date.now() + Math.floor(Math.random() * 1000)).toString();
-              const provisional: Message = { id: finalMessageId, role: 'model', parts: [{ text: textNow }], createdAt: Date.now(), provider: finalProvider, model: finalModel };
-              setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, provisional] } : c));
-              try { logEvent('chat','info','message_add', { runId: String(runToken), chatId, messageId: finalMessageId, type: 'provisional_final' }); } catch {}
-            } else {
-              // Update existing provisional message text
-              const idToUpdate = finalMessageId;
-              setChats(prev => prev.map(c => {
-                if (c.id !== chatId) return c;
-                return {
-                  ...c,
-                  messages: c.messages.map(m => m.id === idToUpdate ? { ...m, parts: [{ text: textNow }] } : m)
-                };
-              }));
-            }
-            try { logEvent('pipeline','debug','final_chunk', { runId: String(runToken), chunkLen: (chunk||'').length, chunks: chunkCount }); } catch {}
-          }
-          finalText = acc;
-          // Attach trace and sources to the provisional message if it exists
-          if (finalMessageId) {
-            const idToUpdate = finalMessageId;
-            const collaborationTrace: CollaborationTrace = { initialResponses, refinedResponses };
-            setChats(prev => prev.map(c => {
-              if (c.id !== chatId) return c;
-              return {
-                ...c,
-                messages: c.messages.map(m => m.id === idToUpdate ? { ...m, collaborationTrace, sources: sources.length > 0 ? sources : undefined } : m)
-              };
-            }));
-            try { logEvent('chat','info','message_update', { runId: String(runToken), chatId, messageId: finalMessageId, attach: ['collaborationTrace','sources'] }); } catch {}
-          }
-        } else {
-          finalText = await p.generateText({ model: finalModel, prompt: finalPrompt, system: SYNTHESIZER_SYSTEM_INSTRUCTION, signal: generationControllerRef.current.signal });
-          if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        }
-        addLog('info', 'Final synthesized response', { provider: finalProvider, model: finalModel, length: finalText.length });
-        try { logEvent('pipeline','info','final_done', { runId: String(runToken), length: finalText.length }); } catch {}
-      }
-      setProgressDone(d => d + 1);
-      
-      // If we didn't stream into an existing provisional message, append now
-      if (!streamedFinal) {
-        const collaborationTrace: CollaborationTrace = { initialResponses, refinedResponses };
-        const modelMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: finalText }], collaborationTrace, sources: sources.length > 0 ? sources : undefined, createdAt: Date.now(), provider: finalProvider, model: finalModel };
-        setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, modelMessage] } : c));
-        try { logEvent('chat','info','message_add', { runId: String(runToken), chatId, messageId: modelMessage.id, type: 'final' }); } catch {}
-      }
-
-      // Step 4 (Optional): If it's a new chat, generate a short plain-text title
-      if (isNewChat) {
-        const titlePrompt = `Generate a very short, plain-text chat title for this conversation.\n\nRules:\n- Maximum 5 words\n- Plain text only (no markdown, no quotes)\n- If naturally appropriate, include at most one relevant emoji\n- Return only the title line\n\nConversation:\nUser: ${prompt}\nAssistant: ${finalText}`;
-        try {
-            const ai = aiRef.current;
-            const titleResponse = await ai!.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: titlePrompt }] }] });
-            const raw = (titleResponse.text ?? 'New Chat').trim();
-            const newTitle = sanitizeTitle(raw);
-            setChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle } : c));
-            try { logEvent('chat','info','title_set', { chatId, title: newTitle }); } catch {}
-        } catch (e) {
-            console.error("Failed to generate title", e);
-            // Non-critical error, chat will remain "New Chat"
-        }
-      }
-
-    } catch (error) {
-      if ((error as any)?.name === 'AbortError' || signal.aborted) {
-        // User aborted; keep partial content and workspace as-is
-        try { logEvent('pipeline','warn','run_aborted', { runId: String(runToken), reason: (error as any)?.message || 'Abort' }); } catch {}
-      } else {
-        console.error("An error occurred during agent collaboration:", error);
-        // push notice and log
-        try { addLog('error', 'Run failed', { error: (error as any)?.message || String(error) }); } catch {}
-        try { logEvent('pipeline','error','run_failed', { runId: String(runToken), error: (error as any)?.message || String(error) }); } catch {}
-        try { pushNotice('error', `Run failed: ${(error as any)?.message || String(error)}`); } catch {}
-        const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: 'Sorry, something went wrong. Please check the console for details.' }], createdAt: Date.now() };
-        setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
-        try { logEvent('chat','info','message_add', { chatId, messageId: errorMessage.id, type: 'error' }); } catch {}
-      }
-    } finally {
-      setIsLoading(false);
-      // If aborted, keep currentCollaborationState so partials remain visible
-      if (!signal.aborted) {
-        setCurrentCollaborationState([]);
-        setLoadingMessage('');
-      }
-      setProgressDone(0);
-      setProgressTotal(0);
-      generationControllerRef.current.finish(runToken);
-      setRunStartTs(null);
-      try { pushNotice('success', 'Processing done'); } catch {}
-      try { addLog('info', 'Run finished'); } catch {}
-      try { logEvent('pipeline','info','run_finish', { runId: String(runToken) }); } catch {}
-      try {
-        const chat = chats.find(c => c.id === chatId);
-        if (chat) logEvent('chat','info','snapshot', { chatId, chat });
-      } catch {}
     }
   };
 
@@ -570,7 +228,39 @@ const App: FC = () => {
     try { logEvent('chat','info','message_add', { chatId: currentChatId, messageId: userMessage.id, type: 'user' }); } catch {}
 
     setInput('');
-    await runAgentCollaboration(promptText, currentChatId, isNewChat);
+    const finalText = await runAgentCollaboration(promptText, currentChatId, isNewChat, agentCount, {
+      setIsLoading,
+      setShowCollaboration,
+      setLoadingMessage,
+      setProgressDone,
+      setProgressTotal,
+      setCurrentCollaborationState,
+      setChats,
+      pushNotice,
+      setRunStartTs,
+      internetEnabled,
+      agentInstructions,
+      agentNames,
+      chats,
+      activeChatId,
+      generationControllerRef,
+      aiRef,
+    });
+
+    if (isNewChat && finalText) {
+        const titlePrompt = `Generate a very short, plain-text chat title for this conversation.\n\nRules:\n- Maximum 5 words\n- Plain text only (no markdown, no quotes)\n- If naturally appropriate, include at most one relevant emoji\n- Return only the title line\n\nConversation:\nUser: ${promptText}\nAssistant: ${finalText}`;
+        try {
+            const ai = aiRef.current;
+            const titleResponse = await ai!.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: titlePrompt }] }] });
+            const raw = (titleResponse.text ?? 'New Chat').trim();
+            const newTitle = sanitizeTitle(raw);
+            setChats(prev => prev.map(c => c.id === currentChatId ? { ...c, title: newTitle } : c));
+            try { logEvent('chat','info','title_set', { chatId: currentChatId, title: newTitle }); } catch {}
+        } catch (e) {
+            console.error("Failed to generate title", e);
+            // Non-critical error, chat will remain "New Chat"
+        }
+    }
   };
   
   /** Updates the text of a specific message, used for saving an edit. */
@@ -611,7 +301,24 @@ const App: FC = () => {
         return c;
       }));
       try { logEvent('chat','info','resend', { chatId: activeChatId, messageId, truncatedAfter: messageId }); } catch {}
-      await runAgentCollaboration(newText, activeChatId, false);
+      await runAgentCollaboration(newText, activeChatId, false, agentCount, {
+        setIsLoading,
+        setShowCollaboration,
+        setLoadingMessage,
+        setProgressDone,
+        setProgressTotal,
+        setCurrentCollaborationState,
+        setChats,
+        pushNotice,
+        setRunStartTs,
+        internetEnabled,
+        agentInstructions,
+        agentNames,
+        chats,
+        activeChatId,
+        generationControllerRef,
+        aiRef,
+      });
     };
     resend();
   };
@@ -645,7 +352,7 @@ const App: FC = () => {
       </div>
       <SettingsModal 
         isOpen={isSettingsOpen} 
-        onClose={() => { try { logEvent('ui','info','settings_close', {}); } catch {}; setIsSettingsOpen(false); }} 
+        onClose={() => { try { logEvent('ui','info','settings_close', {}); } catch {}; setIsSettingsOpen(false); }}
         instructions={agentInstructions} 
         names={agentNames}
         onSave={handleSaveAgentSettings}

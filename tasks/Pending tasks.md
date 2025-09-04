@@ -88,6 +88,8 @@ Accessibility: Ensure buttons have clear labels (many do), and improve focus rin
 
 ## ⏳ PENDING TASKS
 
+### 🚨 HIGH PRIORITY TASKS
+
 ### 🎨 User Interface & Experience
 
 #### [ ⏳ ] Task 1 - Multi-line Support
@@ -292,6 +294,6 @@ Add Playwright tests for: glass chat card present; message header/badge; input s
 - **✅ Completed:** 12 tasks
 - **🔄 In Progress:** 1 task
 - **⚠️ Partially Implemented:** 4 tasks
-- **⏳ Pending:** 59 tasks
+- **⏳ Pending:** 60 tasks
 - **❌ Cancelled:** 0 tasks
-- **📈 Total:** 76 tasks
+- **📈 Total:** 77 tasks

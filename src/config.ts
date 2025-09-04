@@ -25,6 +25,7 @@ export const LS_TRACE_DEFAULT_OPEN = 'trace-default-open';
 export const LS_FLAG_INTERNET = 'flag-internet-enabled';
 export const LS_TOOLS_INCLUDE_WEB = 'tools-include-web';
 export const LS_TOOLS_MAX_SOURCES = 'tools-max-sources';
+export const LS_AGENT_COUNT = 'agent-count';
 
 /**
  * Resolve Gemini API key from environment.
@@ -89,4 +90,12 @@ export const getMaxWebSources = (): number => {
     if (Number.isNaN(v)) return 3;
     return Math.min(Math.max(1, v), 10);
   } catch { return 3; }
+};
+
+export const getAgentCount = (): number => {
+  try {
+    const v = parseInt(localStorage.getItem(LS_AGENT_COUNT) || '4', 10);
+    if (Number.isNaN(v)) return 4;
+    return Math.max(1, Math.min(8, v));
+  } catch { return 4; }
 };

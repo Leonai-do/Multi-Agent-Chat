@@ -4,7 +4,7 @@
 import React, { useState, useEffect, FC } from 'react';
 import LoadingBar from './LoadingBar';
 import { INITIAL_SYSTEM_INSTRUCTION } from '../constants';
-import { LS_GROQ_KEY, LS_GEMINI_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, LS_FLAG_VISION, LS_FLAG_FUNCTIONS, LS_TRACE_DEFAULT_OPEN } from '../config';
+import { LS_GROQ_KEY, LS_GEMINI_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, LS_FLAG_VISION, LS_FLAG_FUNCTIONS, LS_TRACE_DEFAULT_OPEN, LS_AGENT_COUNT } from '../config';
 import { fetchModelsForProvider, type ModelOption } from '../llm/models';
 
 /**
@@ -56,6 +56,8 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
   const [functionsEnabled, setFunctionsEnabled] = useState<boolean>(false);
   // Rendering defaults
   const [traceDefaultOpen, setTraceDefaultOpen] = useState<boolean>(true);
+  // Agent count (dynamic)
+  const [agentCount, setAgentCount] = useState<number>(4);
   // Internet & Tools
   const [internetEnabledFlag, setInternetEnabledFlag] = useState<boolean>(false);
   const [includeWebResults, setIncludeWebResults] = useState<boolean>(true);
@@ -88,7 +90,8 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
         setCurrentGeminiKey(gmk);
         const gp = (localStorage.getItem(LS_PROVIDER_GLOBAL) as 'gemini' | 'groq' | null) || 'gemini';
         setGlobalProvider(gp);
-        const count = (instructions?.length || 4);
+        const count = (parseInt(localStorage.getItem(LS_AGENT_COUNT) || String(instructions?.length || 4), 10)) || 4;
+        setAgentCount(count);
         const paRaw = localStorage.getItem(LS_PROVIDER_PER_AGENT);
         const parsed = paRaw ? (JSON.parse(paRaw) as Array<'gemini' | 'groq'>) : Array(count).fill(gp);
         const normalized = Array(count).fill('gemini').map((_, i) => parsed[i] || gp);
@@ -222,6 +225,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
       localStorage.setItem(LS_FLAG_VISION, visionEnabled ? '1' : '0');
       localStorage.setItem(LS_FLAG_FUNCTIONS, functionsEnabled ? '1' : '0');
       localStorage.setItem(LS_TRACE_DEFAULT_OPEN, traceDefaultOpen ? '1' : '0');
+      localStorage.setItem(LS_AGENT_COUNT, String(agentCount));
       try { localStorage.setItem('flag-internet-enabled', internetEnabledFlag ? '1' : '0'); } catch {}
       try { localStorage.setItem('tools-include-web', includeWebResults ? '1' : '0'); } catch {}
       try { localStorage.setItem('tools-max-sources', String(Math.min(Math.max(1, maxWebSources || 3), 10))); } catch {}
@@ -266,6 +270,33 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
 
       <div className="section-card">
         <div className="section-card__title">Global Defaults</div>
+        <div className="form-row">
+          <span className="form-row__label">Agent Count</span>
+          <input type="number" min={1} max={8} value={agentCount} onChange={(e)=>{
+            const next = Math.max(1, Math.min(8, parseInt(e.target.value || '4', 10)));
+            setAgentCount(next);
+            // Resize instruction/name arrays locally to preview
+            setCurrentInstructions(prev => {
+              const arr = [...prev];
+              if (next > arr.length) return arr.concat(Array(next - arr.length).fill(INITIAL_SYSTEM_INSTRUCTION));
+              return arr.slice(0, next);
+            });
+            setCurrentNames(prev => {
+              const arr = [...prev];
+              if (next > arr.length) return arr.concat(Array(next - arr.length).fill('').map((_,i)=>`Agent ${prev.length + i + 1}`));
+              return arr.slice(0, next);
+            });
+            setPerAgentProviders(prev => {
+              const base = prev.length ? prev[0] : 'gemini';
+              if (next > prev.length) return prev.concat(Array(next - prev.length).fill(base));
+              return prev.slice(0, next);
+            });
+            setPerAgentModels(prev => {
+              if (next > prev.length) return prev.concat(Array(next - prev.length).fill(''));
+              return prev.slice(0, next);
+            });
+          }} className="input" aria-label="Agent count" />
+        </div>
         <div className="form-row">
           <span className="form-row__label">Global Provider</span>
           <select className="select" value={globalProvider} onChange={(e) => {
