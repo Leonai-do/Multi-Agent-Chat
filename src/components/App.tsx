@@ -223,15 +223,10 @@ const App: FC = () => {
     if (internetEnabled) {
       setLoadingMessage('Searching the web...');
       try {
-        if (!tavilyApiKey) {
-          throw new Error("Tavily API key not found. Please add it in the settings menu to enable web search.");
-        }
-
-        const response = await fetch('https://api.tavily.com/search', {
+        const response = await fetch('/api/tools/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            api_key: tavilyApiKey,
             query: prompt,
             search_depth: 'basic',
             include_raw_content: true,
@@ -239,7 +234,7 @@ const App: FC = () => {
           }),
           signal: generationControllerRef.current.signal,
         });
-        if (!response.ok) throw new Error(`Tavily API error: ${response.statusText}`);
+        if (!response.ok) throw new Error(`Web search error: ${response.status} ${response.statusText}`);
         const searchData = await response.json();
         
         sources = (searchData.results || []).map((r: any): Source => ({

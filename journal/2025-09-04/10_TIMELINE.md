@@ -33,3 +33,11 @@ summary: "Added General setting: trace open by default; saved checkpoint tag."
 links: []
 ---
 Added Settings → General toggle for default trace visibility (persisted). Created a repository checkpoint commit + annotated tag for quick rollback/compare.
+---
+id: CJCT-20250904-019
+time: "2025-09-04T13:00:00-04:00"
+type: timeline
+summary: "Patched security: added server proxy /api/tools/search; updated App to use it."
+links: [CJCT-20250904-005, CJCT-20250904-017, CJCT-20250904-018]
+---
+Implemented server-side Tavily proxy and switched the client to call it, eliminating client-side API key exposure.

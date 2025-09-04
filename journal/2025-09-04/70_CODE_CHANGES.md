@@ -40,3 +40,21 @@ Provide ONLY the minimal diff(s):
 +  try { const v = localStorage.getItem(LS_TRACE_DEFAULT_OPEN); return v === null ? true : v === '1'; } catch { return true; }
 +};
 ```
+---
+id: CJCT-20250904-017
+time: "2025-09-04T12:55:00-04:00"
+type: code_change
+files: ["vite.config.ts", "src/components/App.tsx"]
+rationale: "Protect Tavily API key via server proxy; route client requests to /api/tools/search"
+---
+Provide ONLY the minimal diff(s):
+```diff
+// vite.config.ts
+@@ configureServer
++server.middlewares.use('/api/tools/search', async (req, res) => { /* POST → tavily.com/search using server env key */ });
+
+// src/components/App.tsx
+@@ if (internetEnabled)
+-const response = await fetch('https://api.tavily.com/search', { body: JSON.stringify({ api_key: tavilyApiKey, query, ... }) })
++const response = await fetch('/api/tools/search', { body: JSON.stringify({ query, search_depth: 'basic', include_raw_content: true, max_results: 3 }) })
+```

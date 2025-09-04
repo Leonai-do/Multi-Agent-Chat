@@ -71,6 +71,36 @@ export default defineConfig(({ mode }) => {
                 res.statusCode = 500; res.end(e?.message || 'error');
               }
             });
+            // Tools: Tavily search proxy (protect API key server-side)
+            server.middlewares.use('/api/tools/search', async (req, res) => {
+              try {
+                const chunks: any[] = [];
+                for await (const c of req as any) chunks.push(c);
+                const bodyStr = Buffer.concat(chunks as any).toString('utf-8') || '{}';
+                const data = JSON.parse(bodyStr || '{}');
+                const { query, search_depth = 'basic', include_raw_content = true, max_results = 3 } = data || {};
+                if (!query || typeof query !== 'string') { res.statusCode = 400; res.end('Missing query'); return; }
+                const tavilyKey = env.TAVILY_API_KEY || env.VITE_TAVILY_API_KEY || '';
+                if (!tavilyKey) { res.statusCode = 500; res.end('TAVILY_API_KEY not configured on server'); return; }
+                const r: any = await fetch('https://api.tavily.com/search', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    api_key: tavilyKey,
+                    query,
+                    search_depth,
+                    include_raw_content,
+                    max_results,
+                  }),
+                } as any);
+                const text = await r.text();
+                res.statusCode = r.status || 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(text);
+              } catch (e: any) {
+                res.statusCode = 500; res.end(e?.message || 'error');
+              }
+            });
             server.middlewares.use('/api/generate', async (req, res) => {
               try {
                 const chunks: any[] = [];
