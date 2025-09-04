@@ -54,6 +54,10 @@
   --copy-button-border: #dadce0;
   --copy-button-hover-bg: #e8eaed;
   
+  /* Loading bar */
+  --progress-bar-color: var(--button-bg);
+  --progress-track-color: var(--border-color);
+  
   /* Agent Colors */
   --agent-1-color: #4285F4; /* Blue */
   --agent-2-color: #DB4437; /* Red */
@@ -106,6 +110,10 @@ html[data-theme='dark'] {
   --copy-button-text: #e0e0e0;
   --copy-button-border: #4a4d6a;
   --copy-button-hover-bg: #4a4d6a;
+
+  /* Loading bar */
+  --progress-bar-color: var(--button-bg);
+  --progress-track-color: var(--border-color);
 
   /* Themed Scrollbars */
   --scrollbar-track-bg: #2f3249;
@@ -167,6 +175,60 @@ body {
     overflow-x: hidden;
     position: relative;
   }
+}
+
+/**
+ * =============================================================================
+ * LOADING BAR
+ * =============================================================================
+ */
+.loading-bar {
+  background: transparent;
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 900; /* Above content, below modals */
+  padding: 0.25rem 0.5rem;
+}
+
+.loading-bar--side {
+  position: sticky;
+  top: 0;
+  bottom: auto;
+}
+
+.loading-bar__track {
+  width: 100%;
+  height: 6px;
+  background: var(--progress-track-color);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+}
+
+.loading-bar__fill {
+  height: 100%;
+  background: var(--progress-bar-color);
+  border-radius: 999px;
+  transition: width 120ms ease-out;
+}
+
+.loading-bar__fill--indeterminate {
+  width: 30%;
+  animation: loading-bar-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-bar-slide {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(30%); }
+  100% { transform: translateX(200%); }
+}
+
+.loading-bar__label {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--secondary-text-color);
 }
 
 /**
@@ -1330,3 +1392,33 @@ html[data-theme='dark'] .agent-box__status--pending::before { opacity: 0.6; }
   border-color: var(--input-focus-shadow);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--input-focus-shadow) 40%, transparent);
 }
+
+/* --- Provider Badges --- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  font-size: 0.75rem;
+  color: var(--secondary-text-color);
+  background: var(--chip-background, transparent);
+}
+.badge__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}
+.badge--gemini {
+  --chip-background: color-mix(in srgb, #7b61ff 12%, transparent);
+  border-color: #7b61ff55;
+  color: #7b61ff;
+}
+.badge--gemini .badge__dot { background: #7b61ff; }
+.badge--groq {
+  --chip-background: color-mix(in srgb, #ff6f61 12%, transparent);
+  border-color: #ff6f6155;
+  color: #ff6f61;
+}
+.badge--groq .badge__dot { background: #ff6f61; }

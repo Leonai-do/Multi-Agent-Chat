@@ -10,6 +10,7 @@ import type { Message } from '../types';
 import CodeBlock from './CodeBlock';
 import CollaborationTraceView from './CollaborationTraceView';
 import EditPromptModal from './EditPromptModal';
+import { logEvent } from '../state/logs';
 
 /**
  * Props for the MessageItem component.
@@ -43,7 +44,9 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
   /** Handles copying the raw message text to the clipboard with a safe fallback. */
   const handleCopy = () => {
     if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(messageText).catch(() => {
+      navigator.clipboard.writeText(messageText).then(() => {
+        try { logEvent('ui','info','copy_message', { messageId: message.id, role: message.role, length: messageText.length, result: 'success' }); } catch {}
+      }).catch(() => {
         // Fallback on failure
         const ta = document.createElement('textarea');
         ta.value = messageText;
@@ -53,6 +56,7 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
         ta.select();
         try { document.execCommand('copy'); } catch {}
         document.body.removeChild(ta);
+        try { logEvent('ui','error','copy_message', { messageId: message.id, role: message.role, length: messageText.length, result: 'fallback' }); } catch {}
       });
     } else {
       const ta = document.createElement('textarea');
@@ -63,16 +67,19 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
       ta.select();
       try { document.execCommand('copy'); } catch {}
       document.body.removeChild(ta);
+      try { logEvent('ui','info','copy_message', { messageId: message.id, role: message.role, length: messageText.length, result: 'legacy' }); } catch {}
     }
   };
 
   /** Handles saving an edited prompt without resending. */
   const handleSave = (newText: string) => {
+    try { logEvent('chat','info','message_edit_save', { messageId: message.id, newLength: newText.length }); } catch {}
     onUpdateMessage(message.id, newText);
   };
 
   /** Handles saving an edited prompt and triggering a new model response. */
   const handleSaveAndResend = (newText: string) => {
+    try { logEvent('chat','info','message_edit_save_and_resend', { messageId: message.id, newLength: newText.length }); } catch {}
     onResendMessage(message.id, newText);
   };
 
@@ -98,8 +105,9 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
               </span>
               <span style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
                 {message.role === 'model' && message.provider && (
-                  <span className="badge" title={message.model || ''} style={{padding:'0.15rem 0.5rem',borderRadius:'999px',border:'1px solid var(--border-color)',fontSize:'0.75rem',color:'var(--secondary-text-color)'}}>
-                    {message.provider}{message.model ? ` · ${message.model}` : ''}
+                  <span className={`badge badge--${message.provider}`} title={message.model || ''}>
+                    <span className="badge__dot" aria-hidden="true" />
+                    <span>{message.provider}{message.model ? ` · ${message.model}` : ''}</span>
                   </span>
                 )}
                 <span className="message-header__time" style={{fontSize:'0.75rem',color:'var(--secondary-text-color)'}}>
@@ -143,13 +151,13 @@ const MessageItem: FC<MessageItemProps> = ({ message, onUpdateMessage, onResendM
             {/* Toolbar for model messages */}
             {message.role === 'model' && (
                 <div className="message-bubble__toolbar">
-                <button onClick={() => setViewMode(viewMode === 'rendered' ? 'raw' : 'rendered')} className="message-bubble__view-toggle" aria-label={`Switch to ${viewMode === 'rendered' ? 'raw' : 'rendered'} view`}>
+                <button onClick={() => { const to = viewMode === 'rendered' ? 'raw' : 'rendered'; try { logEvent('ui','info','message_view_toggle', { messageId: message.id, to }); } catch {}; setViewMode(to as any); }} className="message-bubble__view-toggle" aria-label={`Switch to ${viewMode === 'rendered' ? 'raw' : 'rendered'} view`}>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
                     {viewMode === 'rendered' ? 'Raw' : 'Rendered'}
                 </button>
 
                 {message.collaborationTrace && (
-                    <button onClick={() => setIsTraceVisible(!isTraceVisible)} className="message-bubble__collaboration-toggle" aria-expanded={isTraceVisible}>
+                    <button onClick={() => { const next = !isTraceVisible; try { logEvent('ui','info','trace_toggle', { messageId: message.id, open: next }); } catch {}; setIsTraceVisible(next); }} className="message-bubble__collaboration-toggle" aria-expanded={isTraceVisible}>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 15.5c-2.26 0-4.26-1.23-5.43-3.13.34-.39.64-.82.89-1.28.63.49 1.37.84 2.16 1.05V10.5h2v1.65c.79-.21 1.53-.56 2.16-1.05.25.46.55.89.89 1.28-1.17 1.9-3.17 3.13-5.43 3.13zM12 14c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm-7.5-1.5c-2.26 0-4.26-1.23-5.43-3.13C-.21 8.98 0 8.44 0 8c0-.44.21-.98.57-1.37C1.74 4.73 3.74 3.5 6 3.5c2.26 0 4.26 1.23 5.43 3.13-.34.39-.64.82-.89 1.28-.63-.49-1.37-.84-2.16-1.05V8.5h-2v-1.65c-.79.21-1.53.56-2.16 1.05-.25-.46-.55-.89-.89-1.28C4.76 4.73 2.76 3.5.5 3.5 2.76 3.5 4.76 4.73 5.93 6.63c.34.39.64.82.89 1.28.63-.49 1.37-.84 2.16-1.05V8.5h2v1.65c.79.21 1.53.56 2.16 1.05.25.46.55.89.89 1.28C10.24 14.27 8.24 15.5 6 15.5c-2.26 0-4.26-1.23-5.43-3.13.34-.39.64-.82.89-1.28-.63.49-1.37-.84-2.16-1.05V10.5h-2v-1.65c-.79.21-1.53-.56-2.16-1.05C1.74 6.27 3.74 7.5 6 7.5c2.26 0 4.26-1.23 5.43-3.13C11.79 4.02 12 4.56 12 5c0 .44-.21.98-.57 1.37C10.26 8.27 8.26 9.5 6 9.5s-4.26-1.23-5.43-3.13z"/></svg>
                     <span>{isTraceVisible ? 'Hide' : 'View'} Collaboration</span>
                     </button>

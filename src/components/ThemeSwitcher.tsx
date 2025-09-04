@@ -3,6 +3,7 @@
  */
 import React, { useState, useEffect, useRef, FC, ReactNode } from 'react';
 import { useTheme } from '../hooks/useTheme';
+import { logEvent } from '../state/logs';
 import type { Theme } from '../types';
 
 /**
@@ -37,13 +38,13 @@ const ThemeSwitcher: FC = () => {
   
   return (
     <div className="theme-switcher" ref={dropdownRef}>
-      <button className="theme-switcher__button" onClick={() => setIsOpen(!isOpen)} aria-label="Select theme">
+      <button className="theme-switcher__button" onClick={() => { const next = !isOpen; try { logEvent('ui','info','theme_dropdown',{ open: next }); } catch {}; setIsOpen(next); }} aria-label="Select theme">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.64-.11 2.4-.31-.3-.39-.55-.83-.73-1.31-.36-.98-.3-2.1.16-3.04.48-.98 1.39-1.66 2.47-1.92.23-.05.47-.07.7-.07.03 0 .06 0 .09.01.28.01.55.05.81.12.01 0 .03-.01.04-.01.25.07.5.16.73.27.02 0 .03-.01.05-.01.23.11.45.24.66.38.1.07.21.13.31.21.01 0 .01 0 .02.01.02 0 .03.01.05.02.01 0 .02.01.04.01.01 0 .02.01.03.01.03.01.05.02.08.04.18.1.36.22.52.34.02.01.03.02.05.03.09.06.17.13.25.2.02.02.04.03.06.05.17.13.34.28.49.44.02.02.03.03.05.05.08.09.16.18.24.27l.02.02c.02.03.04.05.06.08.07.09.14.19.2.28.02.03.03.05.05.08.06.09.12.19.17.29.01.03.02.05.04.08.05.1.09.2.13.3.01.03.02.05.03.08.04.1.08.21.11.31.01.03.02.06.03.09.03.11.06.22.08.33.01.03.01.06.02.09.02.11.04.22.05.33.01.03.01.06.02.09.01.11.02.22.02.34 0 .22-.02.44-.05.65-.02.12-.05.24-.08.35-.01.03-.02.06-.03.09-.03.12-.07.24-.11.36-.01.03-.02.06-.04.09-.04.12-.09.23-.14.34-.01.03-.02.06-.04.09-.05.12-.11.23-.17.34-.01.03-.02.06-.04.09-.06.12-.13.23-.2.34-.01.03-.02.06-.04.09-.07.12-.15.23-.22.34-.01.03-.02.06-.04.09-.08.12-.16.23-.25.34-.01.03-.02.06-.04.09-.09.12-.18.23-.28.34-.01.03-.02.06-.04.09-.1.12-.2.23-.31.34A9.01 9.01 0 0112 21z"/></svg>
       </button>
       {isOpen && (
         <div className="theme-switcher__dropdown">
           {themes.map(t => (
-            <button key={t.id} className={`theme-item ${currentTheme === t.id ? 'theme-item--active' : ''}`} onClick={() => { setTheme(t.id); setIsOpen(false); }}>
+            <button key={t.id} className={`theme-item ${currentTheme === t.id ? 'theme-item--active' : ''}`} onClick={() => { try { logEvent('ui','info','theme_change',{ from: currentTheme, to: t.id }); } catch {}; setTheme(t.id); setIsOpen(false); }}>
               {t.icon}<span>{t.name}</span>
             </button>
           ))}

@@ -16,7 +16,7 @@ import { registerProvider, getProvider } from '../llm/registry';
 import type { ProviderName } from '../llm/provider';
 import GeminiProvider from '../llm/geminiProvider';
 import GroqProvider from '../llm/groqProvider';
-import { addLog, exportLogs } from '../state/logs';
+import { addLog, exportLogs, logEvent } from '../state/logs';
 import GenerationController from '../state/generation';
 
 /**
@@ -72,6 +72,11 @@ const App: FC = () => {
   const [internetEnabled, setInternetEnabled] = useState(false);
   // State for showing a loading message during web search
   const [loadingMessage, setLoadingMessage] = useState('');
+  // Global progress bar state (determinate when total>0)
+  const [progressTotal, setProgressTotal] = useState<number>(0);
+  const [progressDone, setProgressDone] = useState<number>(0);
+  // Mark the start timestamp of the current run for diagnostics filtering
+  const [runStartTs, setRunStartTs] = useState<number | null>(null);
   // State for the Tavily API key, managed in Settings
   const [tavilyApiKey, setTavilyApiKey] = useState<string>('');
   // Floating notices for status/errors
@@ -124,8 +129,10 @@ const App: FC = () => {
   useEffect(() => {
     try {
       localStorage.setItem(LS_CHATS_KEY, JSON.stringify(chats));
+      try { logEvent('chat','info','chats_saved', { count: chats.length }); } catch {}
     } catch (error) {
       console.error("Failed to save chats to localStorage", error);
+      try { logEvent('chat','error','chats_save_failed', { error: (error as any)?.message || String(error) }); } catch {}
     }
   }, [chats]);
 
@@ -147,6 +154,7 @@ const App: FC = () => {
     } catch (error) {
         console.error("Failed to save Tavily API key to localStorage", error);
     }
+    try { logEvent('settings','info','tavily_key_save', { length: key ? key.length : 0 }); } catch {}
   };
 
   /** Saves agent instructions and names from Settings modal. */
@@ -156,14 +164,15 @@ const App: FC = () => {
   };
 
   /** Sets the active chat to null, effectively showing the welcome screen to start a new chat. */
-  const handleNewChat = () => setActiveChatId(null);
+  const handleNewChat = () => { try { logEvent('ui','info','new_chat_click', {}); } catch {}; setActiveChatId(null); };
   
   /** Sets the active chat to the one with the specified ID. */
-  const handleSelectChat = (id: string) => setActiveChatId(id);
+  const handleSelectChat = (id: string) => { try { logEvent('ui','info','select_chat', { chatId: id }); } catch {}; setActiveChatId(id); };
   
   /** Deletes a chat and resets the view if the deleted chat was active. */
   const handleDeleteChat = (id: string) => {
     setChats(prev => prev.filter(c => c.id !== id));
+    try { logEvent('chat','info','chat_deleted', { chatId: id }); } catch {}
     if (activeChatId === id) {
       setActiveChatId(null);
     }
@@ -177,11 +186,15 @@ const App: FC = () => {
    */
   const runAgentCollaboration = async (prompt: string, chatId: string, isNewChat: boolean) => {
     // Begin a new generation run and create an abort signal
-    generationControllerRef.current.start();
+    const runToken = generationControllerRef.current.start();
+    try { logEvent('pipeline','info','run_start', { runId: String(runToken), chatId, prompt, internetEnabled }); } catch {}
+    setRunStartTs(Date.now());
     const signal = generationControllerRef.current.signal;
     setIsLoading(true);
     setShowCollaboration(true);
     setLoadingMessage('');
+    setProgressDone(0);
+    setProgressTotal((internetEnabled ? 1 : 0) + 4 + 4 + 1);
 
     let webContext = '';
     let sources: Source[] = [];
@@ -246,103 +259,231 @@ const App: FC = () => {
           } else {
             const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: `Sorry, I couldn't search the web. ${e.message}` }] };
             setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
+            try { logEvent('pipeline','error','web_search_failed', { runId: String(runToken), error: e?.message || String(e) }); } catch {}
           }
           setIsLoading(false);
-          setCurrentCollaborationState([]);
+          // keep workspace content as-is on abort/error; just reset progress
           setLoadingMessage('');
-          generationControllerRef.current.finish();
+          setProgressDone(0);
+          setProgressTotal(0);
+          generationControllerRef.current.finish(runToken);
           return;
       }
+      // web search finished successfully
+      setProgressDone(d => d + 1);
+      try { logEvent('pipeline','info','web_search_done', { runId: String(runToken), sources: sources.length }); } catch {}
     }
     
     setLoadingMessage('Agents are collaborating...');
+    try { addLog('info', 'Phase started', { phase: 'initial' }); } catch {}
+    try { logEvent('pipeline','info','phase_start', { runId: String(runToken), phase: 'initial' }); } catch {}
     // Initialize live agent state for the UI
     const initialAgents: LiveAgentState[] = Array.from({ length: 4 }, (_, i) => ({ id: i, status: 'initializing', response: '' }));
     setCurrentCollaborationState(initialAgents);
     
-    const ai = aiRef.current;
-    if (!ai) {
-        console.error('AI client is not initialized.');
-        setIsLoading(false);
-        setCurrentCollaborationState([]);
-        setLoadingMessage('');
-        // Ensure controller is finalized even on early return
-        generationControllerRef.current.finish();
-        return;
-    }
+    // Note: We no longer require GoogleGenAI client to run the pipeline.
+    // Providers handle generation; the Google client is only used optionally for title.
       
     try {
       const promptForAgents = webContext ? `${webContext}\n\nBased on the context above, please answer the following user query:\n${prompt}` : prompt;
       
-      // Step 1: Get initial responses from all four agents in parallel
-      setCurrentCollaborationState(prev => prev.map(a => ({ ...a, status: 'writing' })));
-      const initialResponses = await Promise.all(
-        initialAgents.map(async (agent) => {
-          if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-          const provider = perAgentProviders[agent.id] || globalProvider;
-          const model = perAgentModels[agent.id] || globalModel || MODEL_NAME;
-          let text = '';
-          const sys = `You are ${namesLocal[agent.id]}. ${agentInstructions[agent.id]}`;
-          const pName = provider as ProviderName;
-          const p = getProvider(pName);
-          if (!p) throw new Error(`Provider not registered: ${pName}`);
-          text = await p.generateText({ model, prompt: promptForAgents, system: sys, signal: generationControllerRef.current.signal });
-          if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      // Step 1: Get initial responses sequentially (one agent at a time)
+      const initialResponses: string[] = Array(initialAgents.length).fill('');
+      for (const agent of initialAgents) {
+        if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        setLoadingMessage(`Writing: Agent ${agent.id + 1}/4`);
+        const provider = perAgentProviders[agent.id] || globalProvider;
+        const model = perAgentModels[agent.id] || globalModel || MODEL_NAME;
+        const sys = `You are ${namesLocal[agent.id]}. ${agentInstructions[agent.id]}`;
+        const pName = provider as ProviderName;
+        const p = getProvider(pName);
+        if (!p) throw new Error(`Provider not registered: ${pName}`);
+        setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, status: 'writing', response: '' } : a));
+        try { logEvent('pipeline','info','agent_step_start', { runId: String(runToken), phase: 'initial', agentId: agent.id, provider, model }); } catch {}
+        let text = '';
+        const canStream = !!(p.capabilities?.streaming && typeof p.generateStream === 'function');
+        // Per-step timeout (25s) to avoid hanging on network issues
+        const stepController = new AbortController();
+        const stepTimer = setTimeout(() => { try { stepController.abort(); } catch {} }, 25000);
+        const stepSignal = (AbortSignal as any)?.any ? (AbortSignal as any).any([generationControllerRef.current.signal, stepController.signal]) : stepController.signal;
+        try {
+          if (canStream) {
+            let acc = '';
+            let chunkCount = 0;
+            for await (const chunk of p.generateStream({ model, prompt: promptForAgents, system: sys, signal: stepSignal })) {
+              if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+              clearTimeout(stepTimer); // first chunk arrived
+              acc += chunk || '';
+              chunkCount++;
+              const safeAcc = acc;
+              setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: safeAcc } : a));
+              try { logEvent('pipeline','debug','agent_step_chunk', { runId: String(runToken), phase: 'initial', agentId: agent.id, chunkLen: (chunk||'').length, chunks: chunkCount }); } catch {}
+            }
+            text = acc;
+          } else {
+            text = await p.generateText({ model, prompt: promptForAgents, system: sys, signal: stepSignal });
+            if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+            clearTimeout(stepTimer);
+            setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
+          }
+        } catch (e: any) {
+          clearTimeout(stepTimer);
+          if (generationControllerRef.current.signal.aborted) throw e; // global abort
+          // Per-step timeout or fetch error: record and continue with next agent
+          try { addLog('error', 'Initial step failed', { agent: agent.id, error: e?.message || String(e) }); } catch {}
+          text = '';
           setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
-          addLog('debug', 'Initial response', { agent: agent.id, provider, model, length: text.length });
-          return text;
-        })
-      );
+        }
+        setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, status: 'done' } : a));
+        setProgressDone(d => d + 1);
+        addLog('debug', 'Initial response', { agent: agent.id, provider, model, length: text.length });
+        try { logEvent('pipeline','info','agent_step_done', { runId: String(runToken), phase: 'initial', agentId: agent.id, length: text.length }); } catch {}
+        initialResponses[agent.id] = text;
+      }
       
-      // Step 2: Get refined responses from all four agents in parallel
-      setCurrentCollaborationState(prev => prev.map(a => ({ ...a, status: 'refining' })));
-      const refinedResponses = await Promise.all(
-        initialAgents.map(async (agent, agentIndex) => {
-          if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-          const provider = perAgentProviders[agent.id] || globalProvider;
-          const model = perAgentModels[agent.id] || globalModel || MODEL_NAME;
-          const otherResponses = initialResponses.map((resp, i) => `Response from Agent ${i + 1}:\n${resp}`).join('\n\n---\n\n');
-          const refinementPrompt = `Your original instruction was: "You are ${namesLocal[agentIndex]}. ${agentInstructions[agentIndex]}"\n\nHere are the initial responses from all four agents, including your own:\n\n${otherResponses}\n\nPlease critically evaluate all responses. Identify weaknesses, inconsistencies, or factual errors. Then, generate a new, superior response that improves upon these initial drafts.`;
-          let text = '';
-          const pName = provider as ProviderName;
-          const p = getProvider(pName);
-          if (!p) throw new Error(`Provider not registered: ${pName}`);
-          text = await p.generateText({ model, prompt: refinementPrompt, system: REFINEMENT_SYSTEM_INSTRUCTION, signal: generationControllerRef.current.signal });
-          if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-          setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text, status: 'done' } : a));
-          addLog('debug', 'Refined response', { agent: agent.id, provider, model, length: text.length });
-          return text;
-        })
-      );
+      // Step 2: Get refined responses sequentially
+      try { addLog('info', 'Phase started', { phase: 'refinement-sequential' }); } catch {}
+      try { logEvent('pipeline','info','phase_start', { runId: String(runToken), phase: 'refinement' }); } catch {}
+      const refinedResponses: string[] = Array(initialAgents.length).fill('');
+      for (const agent of initialAgents) {
+        if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        setLoadingMessage(`Refining: Agent ${agent.id + 1}/4`);
+        const provider = perAgentProviders[agent.id] || globalProvider;
+        const model = perAgentModels[agent.id] || globalModel || MODEL_NAME;
+        const otherResponses = initialResponses.map((resp, i) => `Response from Agent ${i + 1}:\n${resp}`).join('\n\n---\n\n');
+        const refinementPrompt = `Your original instruction was: "You are ${namesLocal[agent.id]}. ${agentInstructions[agent.id]}"\n\nHere are the initial responses from all four agents, including your own:\n\n${otherResponses}\n\nPlease critically evaluate all responses. Identify weaknesses, inconsistencies, or factual errors. Then, generate a new, superior response that improves upon these initial drafts.`;
+        const pName = provider as ProviderName;
+        const p = getProvider(pName);
+        if (!p) throw new Error(`Provider not registered: ${pName}`);
+        setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, status: 'refining', response: '' } : a));
+        try { logEvent('pipeline','info','agent_step_start', { runId: String(runToken), phase: 'refinement', agentId: agent.id, provider, model }); } catch {}
+        let text = '';
+        const canStream = !!(p.capabilities?.streaming && typeof p.generateStream === 'function');
+        const stepController = new AbortController();
+        const stepTimer = setTimeout(() => { try { stepController.abort(); } catch {} }, 25000);
+        const stepSignal = (AbortSignal as any)?.any ? (AbortSignal as any).any([generationControllerRef.current.signal, stepController.signal]) : stepController.signal;
+        try {
+          if (canStream) {
+            let acc = '';
+            let chunkCount = 0;
+            for await (const chunk of p.generateStream({ model, prompt: refinementPrompt, system: REFINEMENT_SYSTEM_INSTRUCTION, signal: stepSignal })) {
+              if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+              clearTimeout(stepTimer);
+              acc += chunk || '';
+              chunkCount++;
+              const safeAcc = acc;
+              setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: safeAcc } : a));
+              try { logEvent('pipeline','debug','agent_step_chunk', { runId: String(runToken), phase: 'refinement', agentId: agent.id, chunkLen: (chunk||'').length, chunks: chunkCount }); } catch {}
+            }
+            text = acc;
+          } else {
+            text = await p.generateText({ model, prompt: refinementPrompt, system: REFINEMENT_SYSTEM_INSTRUCTION, signal: stepSignal });
+            if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+            clearTimeout(stepTimer);
+            setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
+          }
+        } catch (e: any) {
+          clearTimeout(stepTimer);
+          if (generationControllerRef.current.signal.aborted) throw e;
+          try { addLog('error', 'Refine step failed', { agent: agent.id, error: e?.message || String(e) }); } catch {}
+          text = '';
+          setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, response: text } : a));
+        }
+        setCurrentCollaborationState(prev => prev.map(a => a.id === agent.id ? { ...a, status: 'done' } : a));
+        setProgressDone(d => d + 1);
+        addLog('debug', 'Refined response', { agent: agent.id, provider, model, length: text.length });
+        try { logEvent('pipeline','info','agent_step_done', { runId: String(runToken), phase: 'refinement', agentId: agent.id, length: text.length }); } catch {}
+        refinedResponses[agent.id] = text;
+      }
       
       // Step 3: Get the final synthesized response from the fifth agent
       const sourceListForSynthesizer = sources.map((s, i) => `Source [${i + 1}]: ${s.url}`).join('\n');
       const finalPrompt = `Here are the four refined responses from the agent team:\n\n${refinedResponses.map((r, i) => `Refined Response from Agent ${i + 1}:\n${r}`).join('\n\n---\n\n')}\n\n${sourceListForSynthesizer ? `Use these sources for citation:\n${sourceListForSynthesizer}\n\n` : ''}Synthesize these into a single, final, comprehensive answer for the user. Remember to add citations like [1], [2] etc. where appropriate.`;
       if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
       let finalText = '';
+      let streamedFinal = false;
+      const finalProvider = globalProvider;
+      const finalModel = globalModel || MODEL_NAME;
       {
-        const provider = globalProvider;
-        const model = globalModel || MODEL_NAME;
-        const p = getProvider(provider as ProviderName);
-        if (!p) throw new Error(`Provider not registered: ${provider}`);
-        finalText = await p.generateText({ model, prompt: finalPrompt, system: SYNTHESIZER_SYSTEM_INSTRUCTION, signal: generationControllerRef.current.signal });
-        addLog('info', 'Final synthesized response', { provider, model, length: finalText.length });
+        const p = getProvider(finalProvider as ProviderName);
+        if (!p) throw new Error(`Provider not registered: ${finalProvider}`);
+        try { addLog('info', 'Phase started', { phase: 'final' }); } catch {}
+        try { logEvent('pipeline','info','phase_start', { runId: String(runToken), phase: 'final' }); } catch {}
+        setLoadingMessage('Synthesizing final answer...');
+        if (p.capabilities?.streaming && typeof p.generateStream === 'function') {
+          streamedFinal = true;
+          let acc = '';
+          const stepController = new AbortController();
+          const stepTimer = setTimeout(() => { try { stepController.abort(); } catch {} }, 30000);
+          const stepSignal = (AbortSignal as any)?.any ? (AbortSignal as any).any([generationControllerRef.current.signal, stepController.signal]) : stepController.signal;
+          let finalMessageId: string | null = null;
+          let chunkCount = 0;
+          for await (const chunk of p.generateStream({ model: finalModel, prompt: finalPrompt, system: SYNTHESIZER_SYSTEM_INSTRUCTION, signal: stepSignal })) {
+            if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+            clearTimeout(stepTimer);
+            acc += chunk || '';
+            chunkCount++;
+            const textNow = acc;
+            if (!finalMessageId) {
+              // Create a provisional message and append it to chat
+              finalMessageId = (Date.now() + Math.floor(Math.random() * 1000)).toString();
+              const provisional: Message = { id: finalMessageId, role: 'model', parts: [{ text: textNow }], createdAt: Date.now(), provider: finalProvider, model: finalModel };
+              setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, provisional] } : c));
+              try { logEvent('chat','info','message_add', { runId: String(runToken), chatId, messageId: finalMessageId, type: 'provisional_final' }); } catch {}
+            } else {
+              // Update existing provisional message text
+              const idToUpdate = finalMessageId;
+              setChats(prev => prev.map(c => {
+                if (c.id !== chatId) return c;
+                return {
+                  ...c,
+                  messages: c.messages.map(m => m.id === idToUpdate ? { ...m, parts: [{ text: textNow }] } : m)
+                };
+              }));
+            }
+            try { logEvent('pipeline','debug','final_chunk', { runId: String(runToken), chunkLen: (chunk||'').length, chunks: chunkCount }); } catch {}
+          }
+          finalText = acc;
+          // Attach trace and sources to the provisional message if it exists
+          if (finalMessageId) {
+            const idToUpdate = finalMessageId;
+            const collaborationTrace: CollaborationTrace = { initialResponses, refinedResponses };
+            setChats(prev => prev.map(c => {
+              if (c.id !== chatId) return c;
+              return {
+                ...c,
+                messages: c.messages.map(m => m.id === idToUpdate ? { ...m, collaborationTrace, sources: sources.length > 0 ? sources : undefined } : m)
+              };
+            }));
+            try { logEvent('chat','info','message_update', { runId: String(runToken), chatId, messageId: finalMessageId, attach: ['collaborationTrace','sources'] }); } catch {}
+          }
+        } else {
+          finalText = await p.generateText({ model: finalModel, prompt: finalPrompt, system: SYNTHESIZER_SYSTEM_INSTRUCTION, signal: generationControllerRef.current.signal });
+          if (generationControllerRef.current.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        }
+        addLog('info', 'Final synthesized response', { provider: finalProvider, model: finalModel, length: finalText.length });
+        try { logEvent('pipeline','info','final_done', { runId: String(runToken), length: finalText.length }); } catch {}
       }
+      setProgressDone(d => d + 1);
       
-      const collaborationTrace: CollaborationTrace = { initialResponses, refinedResponses };
-      const modelMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: finalText }], collaborationTrace, sources: sources.length > 0 ? sources : undefined, createdAt: Date.now(), provider, model };
-      
-      // Add the final model message to the active chat
-      setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, modelMessage] } : c));
+      // If we didn't stream into an existing provisional message, append now
+      if (!streamedFinal) {
+        const collaborationTrace: CollaborationTrace = { initialResponses, refinedResponses };
+        const modelMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: finalText }], collaborationTrace, sources: sources.length > 0 ? sources : undefined, createdAt: Date.now(), provider: finalProvider, model: finalModel };
+        setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, modelMessage] } : c));
+        try { logEvent('chat','info','message_add', { runId: String(runToken), chatId, messageId: modelMessage.id, type: 'final' }); } catch {}
+      }
 
       // Step 4 (Optional): If it's a new chat, generate a short plain-text title
       if (isNewChat) {
         const titlePrompt = `Generate a very short, plain-text chat title for this conversation.\n\nRules:\n- Maximum 5 words\n- Plain text only (no markdown, no quotes)\n- If naturally appropriate, include at most one relevant emoji\n- Return only the title line\n\nConversation:\nUser: ${prompt}\nAssistant: ${finalText}`;
         try {
-            const titleResponse = await ai.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: titlePrompt }] }] });
+            const ai = aiRef.current;
+            const titleResponse = await ai!.models.generateContent({ model: MODEL_NAME, contents: [{ role: 'user', parts: [{ text: titlePrompt }] }] });
             const raw = (titleResponse.text ?? 'New Chat').trim();
             const newTitle = sanitizeTitle(raw);
             setChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle } : c));
+            try { logEvent('chat','info','title_set', { chatId, title: newTitle }); } catch {}
         } catch (e) {
             console.error("Failed to generate title", e);
             // Non-critical error, chat will remain "New Chat"
@@ -350,23 +491,37 @@ const App: FC = () => {
       }
 
     } catch (error) {
-      if ((error as any)?.name === 'AbortError' || generationControllerRef.current.signal.aborted) {
-        // User aborted; do not append error message
+      if ((error as any)?.name === 'AbortError' || signal.aborted) {
+        // User aborted; keep partial content and workspace as-is
+        try { logEvent('pipeline','warn','run_aborted', { runId: String(runToken), reason: (error as any)?.message || 'Abort' }); } catch {}
       } else {
         console.error("An error occurred during agent collaboration:", error);
         // push notice and log
         try { addLog('error', 'Run failed', { error: (error as any)?.message || String(error) }); } catch {}
+        try { logEvent('pipeline','error','run_failed', { runId: String(runToken), error: (error as any)?.message || String(error) }); } catch {}
         try { pushNotice('error', `Run failed: ${(error as any)?.message || String(error)}`); } catch {}
         const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', parts: [{ text: 'Sorry, something went wrong. Please check the console for details.' }], createdAt: Date.now() };
         setChats(prev => prev.map(c => c.id === chatId ? { ...c, messages: [...c.messages, errorMessage] } : c));
+        try { logEvent('chat','info','message_add', { chatId, messageId: errorMessage.id, type: 'error' }); } catch {}
       }
     } finally {
       setIsLoading(false);
-      setCurrentCollaborationState([]);
-      setLoadingMessage('');
-      generationControllerRef.current.finish();
+      // If aborted, keep currentCollaborationState so partials remain visible
+      if (!signal.aborted) {
+        setCurrentCollaborationState([]);
+        setLoadingMessage('');
+      }
+      setProgressDone(0);
+      setProgressTotal(0);
+      generationControllerRef.current.finish(runToken);
+      setRunStartTs(null);
       try { pushNotice('success', 'Processing done'); } catch {}
       try { addLog('info', 'Run finished'); } catch {}
+      try { logEvent('pipeline','info','run_finish', { runId: String(runToken) }); } catch {}
+      try {
+        const chat = chats.find(c => c.id === chatId);
+        if (chat) logEvent('chat','info','snapshot', { chatId, chat });
+      } catch {}
     }
   };
 
@@ -387,11 +542,18 @@ const App: FC = () => {
       currentChatId = Date.now().toString();
       const newChat: Chat = { id: currentChatId, title: "New Chat", messages: [userMessage] };
       setChats(prev => [newChat, ...prev]);
+      try { logEvent('chat','info','chat_new', { chatId: currentChatId, title: 'New Chat' }); } catch {}
+      try { logEvent('chat','info','snapshot', { chatId: currentChatId, chat: newChat }); } catch {}
       setActiveChatId(currentChatId);
     } else {
       // Otherwise, add the message to the existing active chat
       setChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: [...c.messages, userMessage] } : c));
+      try {
+        const chat = chats.find(c => c.id === currentChatId);
+        if (chat) logEvent('chat','info','snapshot', { chatId: currentChatId, chat: { ...chat, messages: [...chat.messages, userMessage] } });
+      } catch {}
     }
+    try { logEvent('chat','info','message_add', { chatId: currentChatId, messageId: userMessage.id, type: 'user' }); } catch {}
 
     setInput('');
     await runAgentCollaboration(promptText, currentChatId, isNewChat);
@@ -402,13 +564,16 @@ const App: FC = () => {
     if (!activeChatId) return;
     setChats(prev => prev.map(c => {
       if (c.id === activeChatId) {
-        return {
+        const updated = {
           ...c,
           messages: c.messages.map(m => m.id === messageId ? { ...m, parts: [{ text: newText }] } : m)
         };
+        try { logEvent('chat','info','snapshot', { chatId: activeChatId, chat: updated }); } catch {}
+        return updated;
       }
       return c;
     }));
+    try { logEvent('chat','info','message_update', { chatId: activeChatId, messageId, newLength: newText.length }); } catch {}
   };
 
   /** Resends an edited message, truncating the chat history from that point. */
@@ -425,10 +590,13 @@ const App: FC = () => {
         if (c.id === activeChatId) {
           const updatedMessages = c.messages.map(m => m.id === messageId ? { ...m, parts: [{ text: newText }] } : m);
           const truncatedMessages = updatedMessages.slice(0, messageIndex + 1);
-          return { ...c, messages: truncatedMessages };
+          const updated = { ...c, messages: truncatedMessages };
+          try { logEvent('chat','info','snapshot', { chatId: activeChatId, chat: updated }); } catch {}
+          return updated;
         }
         return c;
       }));
+      try { logEvent('chat','info','resend', { chatId: activeChatId, messageId, truncatedAfter: messageId }); } catch {}
       await runAgentCollaboration(newText, activeChatId, false);
     };
     resend();
@@ -440,8 +608,9 @@ const App: FC = () => {
   const handleStopGeneration = () => {
     generationControllerRef.current.stop();
     setIsLoading(false);
-    setCurrentCollaborationState([]);
-    setLoadingMessage('');
+    // Preserve any partially generated content and statuses; optional label
+    setLoadingMessage((msg) => msg || 'Stopped');
+    try { logEvent('ui','info','stop_click', { runId: String(generationControllerRef.current.token || '') , actor: 'user' }); } catch {}
   };
 
   return (
@@ -462,7 +631,7 @@ const App: FC = () => {
       </div>
       <SettingsModal 
         isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
+        onClose={() => { try { logEvent('ui','info','settings_close', {}); } catch {}; setIsSettingsOpen(false); }} 
         instructions={agentInstructions} 
         names={agentNames}
         onSave={handleSaveAgentSettings}
@@ -476,17 +645,19 @@ const App: FC = () => {
         activeChat={activeChat}
         isLoading={isLoading}
         loadingMessage={loadingMessage}
+        progress={progressTotal > 0 ? (progressDone / Math.max(1, progressTotal)) : undefined}
+        runStartTs={runStartTs}
         internetEnabled={internetEnabled}
-        onToggleInternet={() => setInternetEnabled(prev => !prev)}
+        onToggleInternet={() => { const next = !internetEnabled; try { logEvent('ui','info','toggle_internet', { enabled: next }); } catch {}; setInternetEnabled(next); }}
         currentCollaborationState={currentCollaborationState}
         showCollaboration={showCollaboration}
-        setShowCollaboration={setShowCollaboration}
+        setShowCollaboration={(show) => { try { logEvent('ui','info','workspace_toggle', { show }); } catch {}; setShowCollaboration(show); }}
         handleSubmit={handleSubmit}
         input={input}
         setInput={setInput}
         isSidebarOpen={isSidebarOpen}
-        setIsSidebarOpen={setIsSidebarOpen}
-        setIsSettingsOpen={setIsSettingsOpen}
+        setIsSidebarOpen={(open) => { try { logEvent('ui','info','sidebar_toggle', { open }); } catch {}; setIsSidebarOpen(open); }}
+        setIsSettingsOpen={(open) => { try { logEvent('ui','info','settings_open', {}); } catch {}; setIsSettingsOpen(open); }}
         onUpdateMessage={handleUpdateMessage}
         onResendMessage={handleResendMessage}
         onStopGeneration={handleStopGeneration}

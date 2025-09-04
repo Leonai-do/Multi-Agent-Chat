@@ -19,6 +19,8 @@ export const LS_PROVIDER_GLOBAL = 'provider-global';
 export const LS_PROVIDER_PER_AGENT = 'provider-per-agent';
 export const LS_MODEL_GLOBAL = 'model-global';
 export const LS_MODEL_PER_AGENT = 'model-per-agent';
+export const LS_FLAG_VISION = 'flag-vision-enabled';
+export const LS_FLAG_FUNCTIONS = 'flag-functions-enabled';
 
 /**
  * Resolve Gemini API key from environment.
@@ -45,4 +47,12 @@ export const getGroqApiKey = (): string | undefined => {
   const viteKey = (import.meta as any)?.env?.VITE_GROQ_API_KEY as string | undefined;
   const nodeKey = (globalThis as any)?.process?.env?.GROQ_API_KEY as string | undefined;
   return viteKey || nodeKey;
+};
+
+/** Feature flag helpers (default false). */
+export const getVisionEnabled = (): boolean => {
+  try { return localStorage.getItem(LS_FLAG_VISION) === '1'; } catch { return false; }
+};
+export const getFunctionsEnabled = (): boolean => {
+  try { return localStorage.getItem(LS_FLAG_FUNCTIONS) === '1'; } catch { return false; }
 };

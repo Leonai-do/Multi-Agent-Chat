@@ -2,8 +2,9 @@
  * @file Renders a modal for configuring AI agent system instructions.
  */
 import React, { useState, useEffect, FC } from 'react';
+import LoadingBar from './LoadingBar';
 import { INITIAL_SYSTEM_INSTRUCTION } from '../constants';
-import { LS_GROQ_KEY, LS_GEMINI_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT } from '../config';
+import { LS_GROQ_KEY, LS_GEMINI_KEY, LS_PROVIDER_GLOBAL, LS_PROVIDER_PER_AGENT, LS_MODEL_GLOBAL, LS_MODEL_PER_AGENT, LS_FLAG_VISION, LS_FLAG_FUNCTIONS } from '../config';
 import { fetchModelsForProvider, type ModelOption } from '../llm/models';
 
 /**
@@ -49,6 +50,10 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
   const [globalModel, setGlobalModel] = useState<string>('');
   const [perAgentModels, setPerAgentModels] = useState<string[]>([]);
   const [modelsByProvider, setModelsByProvider] = useState<Record<'gemini'|'groq', ModelOption[]>>({ gemini: [], groq: [] });
+  const [isFetching, setIsFetching] = useState<boolean>(false);
+  // Feature flags
+  const [visionEnabled, setVisionEnabled] = useState<boolean>(false);
+  const [functionsEnabled, setFunctionsEnabled] = useState<boolean>(false);
   const fetchAbortRef = React.useRef<AbortController | null>(null);
   // Feedback messages (floating)
   type Feedback = { id: number; type: 'success' | 'error' | 'info'; text: string };
@@ -88,10 +93,15 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
         const pamRaw = localStorage.getItem(LS_MODEL_PER_AGENT);
         const pamParsed = pamRaw ? (JSON.parse(pamRaw) as string[]) : Array(count).fill(gm);
         setPerAgentModels(Array(count).fill('').map((_, i) => pamParsed[i] || gm));
+        // feature flags
+        setVisionEnabled((localStorage.getItem(LS_FLAG_VISION) || '0') === '1');
+        setFunctionsEnabled((localStorage.getItem(LS_FLAG_FUNCTIONS) || '0') === '1');
       } catch {
         const count = (instructions?.length || 4);
         setPerAgentProviders(Array(count).fill('gemini'));
         setPerAgentModels(Array(count).fill(''));
+        setVisionEnabled(false);
+        setFunctionsEnabled(false);
       }
       // Fetch models for current provider(s)
       (async () => {
@@ -114,28 +124,23 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
     try {
       localStorage.setItem(LS_GEMINI_KEY, currentGeminiKey);
     } catch {}
-    addFeedback('info', 'Testing Gemini key and loading models...');
+    addFeedback('info', 'Loading Gemini models (using interface if configured)...');
     try {
+      setIsFetching(true);
       fetchAbortRef.current?.abort();
       fetchAbortRef.current = new AbortController();
       const signal = fetchAbortRef.current.signal;
-      // Direct call to provide clearer error feedback
-      const url = `https://generativelanguage.googleapis.com/v1/models?key=${encodeURIComponent(currentGeminiKey)}`;
-      const resp = await fetch(url, { signal });
-      if (!resp.ok) {
-        const detail = await resp.text().catch(() => '');
-        addFeedback('error', `Gemini key failed (${resp.status} ${resp.statusText}). ${detail}`);
-        return;
-      }
-      // Also update state via unified util (which consolidates across endpoints)
+      // Update state via unified util (prefers /api/models which can use interface API)
       const [gemini] = await Promise.all([
         fetchModelsForProvider('gemini', currentGeminiKey, signal).catch(() => []),
       ]);
       setModelsByProvider((prev) => ({ ...prev, gemini }));
-      addFeedback('success', `Gemini key saved. Loaded ${gemini.length} models.`);
+      addFeedback('success', `Loaded Gemini models: ${gemini.length}`);
     } catch (e: any) {
       if (e?.name === 'AbortError') return;
       addFeedback('error', `Gemini test failed: ${e?.message || e}`);
+    } finally {
+      setIsFetching(false);
     }
   };
 
@@ -143,26 +148,20 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
     try {
       localStorage.setItem(LS_GROQ_KEY, currentGroqKey);
     } catch {}
-    addFeedback('info', 'Testing Groq key and loading models...');
+    addFeedback('info', 'Loading Groq models (using interface if configured)...');
     try {
+      setIsFetching(true);
       fetchAbortRef.current?.abort();
       fetchAbortRef.current = new AbortController();
       const signal = fetchAbortRef.current.signal;
-      const resp = await fetch('https://api.groq.com/openai/v1/models', {
-        headers: { Authorization: `Bearer ${currentGroqKey}` },
-        signal,
-      });
-      if (!resp.ok) {
-        const detail = await resp.text().catch(() => '');
-        addFeedback('error', `Groq key failed (${resp.status} ${resp.statusText}). ${detail}`);
-        return;
-      }
       const groq = await fetchModelsForProvider('groq', currentGroqKey, signal).catch(() => []);
       setModelsByProvider((prev) => ({ ...prev, groq }));
-      addFeedback('success', `Groq key saved. Loaded ${groq.length} models.`);
+      addFeedback('success', `Loaded Groq models: ${groq.length}`);
     } catch (e: any) {
       if (e?.name === 'AbortError') return;
       addFeedback('error', `Groq test failed: ${e?.message || e}`);
+    } finally {
+      setIsFetching(false);
     }
   };
   
@@ -212,7 +211,10 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
       localStorage.setItem(LS_PROVIDER_PER_AGENT, JSON.stringify(perAgentProviders));
       localStorage.setItem(LS_MODEL_GLOBAL, globalModel);
       localStorage.setItem(LS_MODEL_PER_AGENT, JSON.stringify(perAgentModels));
+      localStorage.setItem(LS_FLAG_VISION, visionEnabled ? '1' : '0');
+      localStorage.setItem(LS_FLAG_FUNCTIONS, functionsEnabled ? '1' : '0');
     } catch {}
+    try { logEvent('settings','info','save_all', { instructionsLength: currentInstructions.map(x=>x.length), names: currentNames, globalProvider, globalModel, perAgentProviders, perAgentModels, visionEnabled, functionsEnabled }); } catch {}
     onClose();
   };
   
@@ -260,17 +262,55 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
             setPerAgentProviders(prev => prev.map(() => val));
             setGlobalModel('');
             setPerAgentModels(prev => prev.map(() => ''));
+            try { logEvent('settings','info','global_provider_change', { provider: val }); } catch {}
           }} aria-label="Global provider select">
             <option value="gemini">Gemini</option>
             <option value="groq">Groq</option>
           </select>
           <span className="form-row__label">Global Model</span>
-          <select className="select" value={globalModel} onChange={(e) => setGlobalModel(e.target.value)} aria-label="Global model select">
+          <select className="select" value={globalModel} onChange={(e) => { setGlobalModel(e.target.value); try { logEvent('settings','info','global_model_change', { model: e.target.value }); } catch {} }} aria-label="Global model select">
             <option value="" disabled>(Select model)</option>
             {(modelsByProvider[globalProvider] || []).map(m => (
               <option key={m.id} value={m.id}>{m.label}</option>
             ))}
           </select>
+        </div>
+        <div className="form-row" style={{ justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <button
+            className="button button--secondary"
+            onClick={async () => {
+              addFeedback('info', 'Refreshing models...');
+              try {
+                setIsFetching(true);
+                fetchAbortRef.current?.abort();
+                fetchAbortRef.current = new AbortController();
+                const signal = fetchAbortRef.current.signal;
+                const [gemini, groq] = await Promise.all([
+                  fetchModelsForProvider('gemini', currentGeminiKey, signal).catch(() => []),
+                  fetchModelsForProvider('groq', currentGroqKey, signal).catch(() => []),
+                ]);
+                setModelsByProvider({ gemini, groq });
+                addFeedback('success', `Refreshed models. Gemini: ${gemini.length}, Groq: ${groq.length}`);
+                try { logEvent('settings','info','refresh_models', { gemini: gemini.length, groq: groq.length }); } catch {}
+              } catch (e: any) {
+                if (e?.name === 'AbortError') return;
+                addFeedback('error', `Refresh failed: ${e?.message || e}`);
+                try { logEvent('settings','error','refresh_models', { error: e?.message || String(e) }); } catch {}
+              } finally {
+                setIsFetching(false);
+              }
+            }}
+            aria-label="Refresh models"
+          >Refresh Models</button>
+          <button
+            className="button button--secondary"
+            onClick={() => {
+              setPerAgentProviders(prev => prev.map(() => globalProvider));
+              setPerAgentModels(prev => prev.map(() => globalModel || ''));
+              addFeedback('success', 'Applied global provider/model to all agents');
+            }}
+            aria-label="Apply global provider and model to all agents"
+          >Apply Global to Agents</button>
         </div>
       </div>
 
@@ -284,6 +324,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
                 const v = (e.target.value as 'gemini' | 'groq');
                 setPerAgentProviders(prev => prev.map((x, idx) => idx === i ? v : x));
                 setPerAgentModels(prev => prev.map((x, idx) => idx === i ? '' : x));
+                try { logEvent('settings','info','agent_provider_change', { agent: i, provider: v }); } catch {}
               }}>
                 <option value="gemini">Gemini</option>
                 <option value="groq">Groq</option>
@@ -291,6 +332,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
               <select className="select agent-row__model" aria-label={`Model for Agent ${i + 1}`} value={perAgentModels[i] || ''} onChange={(e) => {
                 const val = e.target.value;
                 setPerAgentModels(prev => prev.map((x, idx) => idx === i ? val : x));
+                try { logEvent('settings','info','agent_model_change', { agent: i, model: val }); } catch {}
               }}>
                 <option value="" disabled>(Model)</option>
                 {(modelsByProvider[perAgentProviders[i]] || []).map(m => (
@@ -330,7 +372,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
       <div className="settings-sidebar__section">
         <div className="settings-sidebar__title">Settings</div>
         {tabs.map(t => (
-          <div key={t.id} className={`nav-item ${activeTab === t.id ? 'nav-item--active' : ''}`} onClick={() => setActiveTab(t.id)} role="button" aria-label={`Open ${t.label}`}>
+          <div key={t.id} className={`nav-item ${activeTab === t.id ? 'nav-item--active' : ''}`} onClick={() => { try { logEvent('ui','info','settings_tab_change', { to: t.id }); } catch {}; setActiveTab(t.id); }} role="button" aria-label={`Open ${t.label}`}>
             <span>{t.label}</span>
           </div>
         ))}
@@ -350,7 +392,35 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
           <div className="settings-content">
             {activeTab === 'providers' && ProvidersSection}
             {activeTab === 'agents' && AgentsSection}
-            {activeTab !== 'providers' && activeTab !== 'agents' && (
+            {activeTab === 'vision' && (
+              <>
+                <div className="section-card">
+                  <div className="section-card__title">Vision</div>
+                  <div className="section-card__desc">Enable image inputs and vision capabilities where supported by the selected provider.</div>
+                  <div className="form-row">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input type="checkbox" checked={visionEnabled} onChange={(e) => setVisionEnabled(e.target.checked)} aria-label="Enable vision features" />
+                      <span>Enable Vision</span>
+                    </label>
+                  </div>
+                </div>
+              </>
+            )}
+            {activeTab === 'advanced' && (
+              <>
+                <div className="section-card">
+                  <div className="section-card__title">Function Calling</div>
+                  <div className="section-card__desc">Enable function/tool calling where supported. This is a feature flag only; behavior will be no-op if the provider/model doesn’t support it.</div>
+                  <div className="form-row">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input type="checkbox" checked={functionsEnabled} onChange={(e) => setFunctionsEnabled(e.target.checked)} aria-label="Enable function calling" />
+                      <span>Enable Function Calling</span>
+                    </label>
+                  </div>
+                </div>
+              </>
+            )}
+            {activeTab !== 'providers' && activeTab !== 'agents' && activeTab !== 'vision' && activeTab !== 'advanced' && (
               <DevPlaceholder text="Development in progress" />
             )}
           </div>
@@ -363,6 +433,9 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
           </div>
         </div>
       </div>
+      {/* Inline loading bar for model fetch operations */}
+      <LoadingBar visible={isFetching} label="Loading models..." />
+
       {/* Floating feedback box */}
       <div style={{ position: 'fixed', right: '1rem', bottom: '1rem', zIndex: 1000, maxWidth: '360px' }}>
         {feedbacks.map(f => (

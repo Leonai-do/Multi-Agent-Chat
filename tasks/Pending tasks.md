@@ -24,6 +24,36 @@ Add internet support to the multi chat app
 ### [ ✅ ] Task 33 - Build Path Clarity
 Build path clarity: You have both Vite and a CDN import map setup (index.html). Ensure local dev and deployment paths are aligned (either bundle with Vite and drop CDN import map, or clearly document both paths).
 
+### [ ✅ ] Task 2 - Stop Button
+Implemented Stop control wired to AbortController in the live collaboration view. Verified by e2e test "send prompt and cancel/complete run cleanly".
+
+### [ ✅ ] Task 29 - Provider Abstraction
+Introduced LLM Provider SPI and registry with adapters for Gemini and Groq. App now routes all generation via providers.
+
+### [ ✅ ] Task 30 - Abort/Stop Generation
+AbortController is threaded end‑to‑end; Stop cancels in‑flight calls across all phases. Providers support streaming with cancellation.
+
+### [ ✅ ] Task 45 - LLM Provider SPI
+Defined SPI with capability flags (streaming, vision, functionCalling). Implemented `geminiProvider` and `groqProvider`.
+
+### [ ✅ ] Task 15 - Different Model Providers
+Added Gemini and Groq providers with per‑provider API keys and model selection in Settings.
+
+### [ ⚠️ ] Task 23 - Different Model Providers Implementation
+Partially implemented: provider interface + adapters for Gemini and Groq are done. OpenAI/Anthropic not yet added.
+
+### [ ✅ ] Task 32 - Title Generation Robustness
+Added `sanitizeTitle()` and guarded title generation with fallback; truncates, de‑quotes, and limits words/length.
+
+### [ ✅ ] Task 63 - Message Card Redesign
+Added header with sender name, timestamp, and provider/model badge. Unified spacing and toolbar with Rendered/Raw toggle.
+
+### [ ✅ ] Task 69 - Providers Tab Section‑Cards
+Providers & Models now uses three section‑cards: API Keys (Save & Test), Global Defaults, and Agents Grid.
+
+### [ ✅ ] Task 71 - Refresh Models & Apply Global
+Added “Refresh models” and “Apply Global to Agents” actions in Settings.
+
 ---
 
 ## 🔄 IN PROGRESS TASKS
@@ -44,8 +74,7 @@ Thinking Visibility: Two parts: status + streaming. Status is there ("writing", 
 Remove hard‑coded agent count: Replace Array(4) with a derived count or setting in src/components/App.tsx:40,100 and src/components/SettingsModal.tsx:65. Also adjust prompts that say "four agents."
 Unify styling approach: The app uses global CSS (index.css) while CSS modules exist but aren't imported (src/components/*.module.css, src/styles/global.css). Choose one approach (likely global, given index.html) and delete unused modules to reduce confusion.
 
-### [ 🔄 ] Task 32 - Title Generation Robustness
-Title generation robustness: The title prompt is fine; consider truncation/sanitization and a small debounce or retry given occasional transient errors.
+ 
 
 ### [ 🔄 ] Task 38 - Accessibility Improvements
 Accessibility: Ensure buttons have clear labels (many do), and improve focus rings for keyboard navigation.
@@ -59,8 +88,7 @@ Accessibility: Ensure buttons have clear labels (many do), and improve focus rin
 #### [ ⏳ ] Task 1 - Multi-line Support
 Add multi-line support to the app, when the users are writing a message, they must be able to write multiple lines of text by using ctl+enter or shit+enter, and send the message by using enter.
 
-#### [ ⏳ ] Task 2 - Stop Button
-Add an stop button to stop the generation of the response from the agents.
+ 
 
 #### [ ⏳ ] Task 5 - Copy Buttons for Agent Responses
 Add a copy button for both inital and refined response from the agents, in the agent box, and in the collaboration trace view.
@@ -111,8 +139,7 @@ Make the agent's instruction box collapsable, separate their names in the boxes 
 #### [ ⏳ ] Task 62 - Chat Panel Glass Card
 Center the chat surface in a single column and wrap the message list + input in a glassmorphism card (backdrop blur, semi‑transparent bg, subtle border/shadow). Constrain max width (900–1100px) for readability.
 
-#### [ ⏳ ] Task 63 - Message Card Redesign
-Add a small header row to model/user messages: left = sender name, right = timestamp; include a small provider badge (e.g., Gemini/Groq). Keep current Markdown rendering, unify bubble spacing, and ensure code blocks align visually.
+ 
 
 #### [ ⏳ ] Task 64 - Code Block & Copy Unification
 Unify code block styling (monospace, subtle bg, rounded corners) and reuse the same copy affordance and feedback across messages and agent boxes for consistency.
@@ -150,11 +177,9 @@ Dynamic Agent Management: Add the ability for users to dynamically add/remove ag
 
 ### 🔌 Provider & Model Support
 
-#### [ ⏳ ] Task 15 - Different Model Providers
-Add different model providers to the app
+ 
 
-#### [ ⏳ ] Task 23 - Different Model Providers Implementation
-Different Model Providers: Worth it. Add a provider interface (generate, model, systemInstruction) and adapters for Google, OpenAI, Anthropic, etc. Settings should allow selecting provider/model and configuring API keys (prefer backend storage). Centralize the client in a src/llm/provider.ts to decouple UI from SDKs.
+ 
 
 #### [ ⏳ ] Task 60 - Provider API Key Management
 When the user selects one provider, the api key for that provider is requested, and saved in the local storage, and used for all the requests to that provider. Each provider must have a different api key, and the user must be able to select the provider and enter the api key for that provider, with a box for each provider.
@@ -167,11 +192,9 @@ Raw text view wrapping: Update index.css:633-642 as noted to use horizontal scro
 #### [ ⏳ ] Task 28 - Consistent Markdown Rendering
 Consistent Markdown rendering: In src/components/MessageItem.tsx, consider adding components for links (a), tables, and list spacing. For Agent live/trace (src/components/AgentBox.tsx), you currently override pre → fragment; that can break code block layout. Prefer consistent pre/code blocks with the same rules used in messages.
 
-#### [ ⏳ ] Task 29 - Provider Abstraction
-Provider abstraction: Extract Gemini calls out of src/components/App.tsx into a provider. This simplifies adding providers (item 15) and testing. Also enables adding tools (item 8) without touching UI.
+ 
 
-#### [ ⏳ ] Task 30 - Abort/Stop Generation
-Abort/stop generation: Wire AbortController through the provider so a "Stop" button can cancel in‑flight calls; aligns with better UX and prevents duplicate updates.
+ 
 
 #### [ ⏳ ] Task 31 - Batch State Updates
 Batch state updates: Inside runAgentCollaboration you call setCurrentCollaborationState multiple times during Promise.all. Consider buffering updates per agent and applying in fewer renders to reduce UI churn.
@@ -201,8 +224,7 @@ Introduce GenerationController with AbortController and event emitter (isGenerat
 #### [ ⏳ ] Task 44 - Collaboration Orchestrator
 Extract collaboration orchestrator into src/agents/collaborationOrchestrator.ts (search → initial → refine → synthesize) with abort checks and progress callbacks.
 
-#### [ ⏳ ] Task 45 - LLM Provider SPI
-Define LLMProvider SPI and ProviderRegistry with capability flags (streaming, vision, functionCalling); implement geminiProvider adapter.
+ 
 
 #### [ ⏳ ] Task 46 - Tools Layer
 Add Tools layer with a unified Tool interface (Search, FetchPage, Cite) supporting abort signals; design for optional server proxy.
@@ -248,14 +270,12 @@ Document architecture and extension points (providers, tools, RAG, vision) to gu
 
 ### ⚙️ Settings & Configuration
 
-#### [ ⏳ ] Task 69 - Providers Tab Section‑Cards
-Finalize Providers & Models into three section‑cards: (1) API Keys with Save & Test, (2) Global Defaults (Provider/Model), (3) Agents Grid (per‑agent Provider/Model). Add concise helper text.
+ 
 
 #### [ ⏳ ] Task 70 - Sidebar Icons & Tab Persistence
 Add icons to settings sidebar items and persist the last opened tab in localStorage; restore it when reopening Settings.
 
-#### [ ⏳ ] Task 71 - Refresh Models & Apply Global
-Add “Refresh models” next to Global Model and an “Apply Global to All Agents” action to propagate model choice quickly.
+ 
 
 #### [ ⏳ ] Task 72 - Agent Name Preview & Validation
 Show a one‑line preview (“You are {name}…”) under each instruction textarea; validate names (non‑empty, reasonable length) with inline feedback.
@@ -271,8 +291,8 @@ Add Playwright tests for: glass chat card present; message header/badge; input s
 ---
 
 ## 📊 Task Summary
-- **✅ Completed:** 3 tasks
+- **✅ Completed:** 12 tasks
 - **🔄 In Progress:** 7 tasks  
-- **⏳ Pending:** 64 tasks
+- **⏳ Pending:** 55 tasks
 - **❌ Cancelled:** 0 tasks
 - **📈 Total:** 74 tasks

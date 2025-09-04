@@ -16,6 +16,7 @@ export class GenerationController {
   private controller: AbortController | null = null;
   private listeners: { [K in keyof GenerationEventMap]?: Set<Listener<K>> } = {} as any;
   public isGenerating = false;
+  private runToken: symbol | null = null;
 
   /** Start a new run, creating a fresh AbortController. */
   start() {
@@ -25,15 +26,23 @@ export class GenerationController {
     }
     this.controller = new AbortController();
     this.isGenerating = true;
+    this.runToken = Symbol('generation-run');
     this.emit('start');
+    return this.runToken;
   }
 
   /** Soft-finish a run (called in finally blocks). */
-  finish() {
+  finish(token?: symbol) {
+    // Only finish if token matches current run, if provided
+    if (token && this.runToken && token !== this.runToken) return;
     this.isGenerating = false;
     this.emit('finish');
     this.controller = null;
+    this.runToken = null;
   }
+
+  /** Returns the current run token, if any, for logging correlation. */
+  get token(): symbol | null { return this.runToken; }
 
   /** Abort current run (user pressed Stop). */
   stop() {
@@ -69,4 +78,3 @@ export class GenerationController {
 }
 
 export default GenerationController;
-

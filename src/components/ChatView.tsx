@@ -2,18 +2,22 @@
  * @file This component represents the main chat interface, including the header,
  * message list, live agent workspace, and input form.
  */
-import React, { FC, FormEvent, useRef, useEffect } from 'react';
+import React, { FC, FormEvent, useRef, useEffect, useMemo, useState } from 'react';
 import type { Chat, LiveAgentState } from '../types';
 import MessageItem from './MessageItem';
+import LoadingBar from './LoadingBar';
 import LiveAgentWorkspace from './LiveAgentWorkspace';
 import ThemeSwitcher from './ThemeSwitcher';
 import { APP_TITLE, INPUT_PLACEHOLDER } from '../config';
+import { getLogs, logEvent } from '../state/logs';
 
 /** Props for the ChatView component. */
 interface ChatViewProps {
   activeChat: Chat | undefined;
   isLoading: boolean;
   loadingMessage: string;
+  progress?: number;
+  runStartTs: number | null;
   internetEnabled: boolean;
   onToggleInternet: () => void;
   currentCollaborationState: LiveAgentState[];
@@ -38,6 +42,7 @@ const ChatView: FC<ChatViewProps> = ({
   activeChat,
   isLoading,
   loadingMessage,
+  progress,
   internetEnabled,
   onToggleInternet,
   currentCollaborationState,
@@ -52,8 +57,10 @@ const ChatView: FC<ChatViewProps> = ({
   onUpdateMessage,
   onResendMessage,
   onStopGeneration,
+  runStartTs,
 }) => {
   const messageListRef = useRef<HTMLDivElement>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   // Auto-scroll to the bottom when messages or collaboration state update
   useEffect(() => {
@@ -64,6 +71,29 @@ const ChatView: FC<ChatViewProps> = ({
 
   const hasMessages = !!activeChat && activeChat.messages && activeChat.messages.length > 0;
   const showWorkspace = currentCollaborationState && currentCollaborationState.length > 0;
+
+  // Summaries for status row
+  const statusSummary = useMemo(() => {
+    const total = currentCollaborationState?.length || 0;
+    const writing = currentCollaborationState.filter(a => a.status === 'writing').length;
+    const refining = currentCollaborationState.filter(a => a.status === 'refining').length;
+    const done = currentCollaborationState.filter(a => a.status === 'done').length;
+    return { total, writing, refining, done };
+  }, [currentCollaborationState]);
+
+  // Diagnostics: recent logs for current run (filter by ts >= runStartTs)
+  const runLogs = useMemo(() => {
+    const list = getLogs();
+    if (!runStartTs) return [] as typeof list;
+    try {
+      return list.filter(l => {
+        const t = Date.parse(l.ts);
+        return !Number.isNaN(t) && t >= runStartTs;
+      }).slice(-20);
+    } catch {
+      return [] as typeof list;
+    }
+  }, [runStartTs, loadingMessage, currentCollaborationState]);
 
   return (
     <div className="chat-view">
@@ -176,10 +206,35 @@ const ChatView: FC<ChatViewProps> = ({
               </div>
             </div>
           )}
+          {/* Status & Diagnostics row */}
+          {(showWorkspace || loadingMessage) && (
+            <div className="status-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.5rem 0.75rem', borderTop: '1px solid var(--border-color)', color: 'var(--secondary-text-color)' }}>
+              <div style={{ fontSize: '0.85rem' }}>
+                <strong>Status:</strong>
+                <span> Writing {statusSummary.writing}/{statusSummary.total}</span>
+                <span> · Refining {statusSummary.refining}/{statusSummary.total}</span>
+                <span> · Done {statusSummary.done}/{statusSummary.total}</span>
+              </div>
+              <button className="button button--secondary" onClick={() => { const next = !showDiagnostics; try { logEvent('ui','info','diagnostics_toggle', { open: next }); } catch {}; setShowDiagnostics(next); }} aria-expanded={showDiagnostics} aria-label="Toggle diagnostics" style={{ padding: '0.25rem 0.5rem' }}>
+                {showDiagnostics ? 'Hide Diagnostics' : 'Show Diagnostics'}
+              </button>
+            </div>
+          )}
+          {showDiagnostics && (
+            <div className="diagnostics-panel" style={{ padding: '0.5rem 0.75rem', background: 'var(--panel-bg, rgba(0,0,0,0.04))', borderRadius: 8, border: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
+              <div style={{ fontSize: '0.85rem', marginBottom: '0.25rem', color: 'var(--secondary-text-color)' }}>Run Diagnostics</div>
+              <pre style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: '0.8rem' }}>
+                {runLogs.map(l => `• [${new Date(l.ts).toLocaleTimeString()}] ${l.level.toUpperCase()}: ${l.message}${l.data ? ' ' + JSON.stringify(l.data) : ''}`).join('\n') || 'No diagnostics available.'}
+              </pre>
+            </div>
+          )}
         </div>
       )}
 
       {/* Input form */}
+      {/* Global loading bar shown above the input */}
+      <LoadingBar visible={isLoading} progress={progress} label={loadingMessage || (isLoading ? 'Processing…' : '')} />
+
       <form className="chat-input" onSubmit={handleSubmit}>
         <input
           className="chat-input__text-field"

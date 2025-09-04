@@ -9,36 +9,55 @@ export interface ModelOption { id: string; label: string }
 export async function fetchGeminiModels(apiKey?: string, signal?: AbortSignal): Promise<ModelOption[]> {
   const key = apiKey || getGeminiApiKey();
   if (!key) return [];
-  const urls = [
+
+  // Helper to fetch all pages for a given base URL
+  const listAll = async (baseUrl: string): Promise<any[]> => {
+    const items: any[] = [];
+    let pageToken = '';
+    while (true) {
+      const url = `${baseUrl}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}&pageSize=200`;
+      const resp = await fetch(url, { signal });
+      if (!resp.ok) break;
+      const data = await resp.json();
+      const models = (data.models || data?.data || []) as any[];
+      if (Array.isArray(models)) items.push(...models);
+      const next = (data.nextPageToken as string | undefined) || '';
+      if (!next) break;
+      pageToken = next;
+    }
+    return items;
+  };
+
+  // Query both v1 and v1beta and merge results
+  const bases = [
     `https://generativelanguage.googleapis.com/v1/models?key=${encodeURIComponent(key)}`,
     `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,
   ];
-  for (const url of urls) {
+
+  const collected: any[] = [];
+  for (const b of bases) {
     try {
-      const resp = await fetch(url, { signal });
-      if (!resp.ok) continue;
-      const data = await resp.json();
-      const models = (data.models || data?.data || []) as any[];
-      // Filter to text/chat capable models (presence of supportedGenerationMethods or name pattern)
-      const options: ModelOption[] = models
-        .map((m) => ({
-          id: m.name || m.id || '',
-          label: m.displayName || m.description || m.name || m.id || '',
-          methods: m.supportedGenerationMethods as string[] | undefined,
-        }))
-        .filter((m) => m.id)
-        .filter((m) => {
-          const id = m.id.toLowerCase();
-          if (m.methods && Array.isArray(m.methods)) return m.methods.includes('generateContent');
-          return id.includes('gemini');
-        })
-        .map((m) => ({ id: m.id, label: m.label || m.id }));
-      if (options.length) return options;
+      const list = await listAll(b);
+      if (list?.length) collected.push(...list);
     } catch {
-      // try next endpoint
+      // continue to next base
     }
   }
-  return [];
+
+  // Normalize, de-duplicate, and sort
+  const seen = new Set<string>();
+  const options: ModelOption[] = [];
+  for (const m of collected) {
+    const rawId = (m.name || m.id || '') as string;
+    if (!rawId) continue;
+    const id = rawId.replace(/^models\//, '');
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const label = (m.displayName || m.description || id) as string;
+    options.push({ id, label });
+  }
+  options.sort((a, b) => a.id.localeCompare(b.id));
+  return options;
 }
 
 /** Fetch Groq models via OpenAI-compatible REST (requires API key). */
@@ -65,4 +84,3 @@ export async function fetchModelsForProvider(provider: ProviderName, apiKey?: st
   if (provider === 'groq') return fetchGroqModels(apiKey, signal);
   return [];
 }
-
