@@ -26,3 +26,8 @@ dist-ssr
 # Custom directories to ignore
 Docs/
 journal/
+
+# Additional local development directories
+.agents/
+
+Docs/Libraries Docs/
