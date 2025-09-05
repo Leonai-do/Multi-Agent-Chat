@@ -32,4 +32,3 @@ export default class SearchTool implements Tool<SearchInput, SearchOutput> {
     }
   }
 }
-

@@ -38,8 +38,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
   const [currentInstructions, setCurrentInstructions] = useState(instructions);
   // Local state for agent names
   const [currentNames, setCurrentNames] = useState<string[]>(names && names.length ? names : Array(4).fill('').map((_,i)=>`Agent ${i+1}`));
-  // Local state for the Tavily API key.
-  const [currentTavilyKey, setCurrentTavilyKey] = useState(tavilyApiKey);
+  
   // Local state for the Groq API key.
   const [currentGroqKey, setCurrentGroqKey] = useState<string>('');
   // Local state for the Gemini API key.
@@ -175,6 +174,35 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
       setIsFetching(false);
     }
   };
+
+  const handleSaveTavilyKey = async () => {
+    try {
+      localStorage.setItem(LS_TAVILY_KEY, currentTavilyKey);
+    } catch {}
+    addFeedback('info', 'Testing Tavily API key...');
+    try {
+      setIsFetching(true);
+      const response = await fetch('/api/tavily-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ apiKey: currentTavilyKey }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        addFeedback('success', 'Tavily API key is valid!');
+      } else {
+        addFeedback('error', `Tavily test failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (e: any) {
+      addFeedback('error', `Tavily test failed: ${e?.message || e}`);
+    } finally {
+      setIsFetching(false);
+    }
+  };
   
   // Sidebar tabs (must be declared before early return to keep hook order stable)
   const tabs: { id: string; label: string }[] = [
@@ -256,6 +284,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose, instructions, 
         <div className="form-grid">
           <div className="input-with-button">
             <input id="tavily-api-key" type="password" className="api-key-editor__input" value={currentTavilyKey} onChange={(e) => setCurrentTavilyKey(e.target.value)} placeholder="Enter your Tavily API Key" aria-label="Tavily API Key input" />
+            <button className="button button--primary" onClick={handleSaveTavilyKey} aria-label="Save Tavily API key and test">Save & Test</button>
           </div>
           <div className="input-with-button">
             <input id="gemini-api-key" type="password" className="api-key-editor__input" value={currentGeminiKey} onChange={(e) => setCurrentGeminiKey(e.target.value)} placeholder="Enter your Gemini API Key" aria-label="Gemini API Key input" />

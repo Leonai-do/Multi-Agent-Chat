@@ -2,3 +2,5 @@
 # Example:
 # *.log
 # tmp/
+node_modules/
+Docs/

@@ -1,6 +1,17 @@
 # 📋 Multi-Agent Gemini Chat - Task Management
 
+> **Note:** This file is used for task management when the primary Archon MCP server is unavailable. Please follow these guidelines to maintain consistency.
+
+## 📝 How to Manage Tasks in this File
+
+*   **To Read Tasks:** Simply read the file to understand the current status of all tasks.
+*   **To Create a New Task:** Add a new entry under the appropriate status category using the format: `### [ <status_emoji> ] Task Title\nDetailed description...`
+*   **To Update a Task's Status:** Move the task to the correct section (e.g., from `PENDING` to `IN PROGRESS`) and update its status emoji accordingly.
+*   **Keep the Summary Updated:** After any change, please update the `📊 Task Summary` at the bottom of the file.
+
+
 ## 🎯 Status Legend
+- **[ 🚨 ]** = 🚨 **HIGH PRIORITY TASKS** - Task is critical and must be completed as soon as possible
 - **[ ✅ ]** = ✅ **COMPLETED** - Task is fully implemented and working
 - **[ 🔄 ]** = 🔄 **IN PROGRESS** - Task is currently being worked on
 - **[ ⚠️ ]** = ⚠️ **PARTIALLY IMPLEMENTED** - Task has some implementation but needs completion
@@ -78,7 +89,6 @@ Thinking Visibility: Two parts: status + streaming. Status is there ("writing", 
 Remove hard‑coded agent count: Replace Array(4) with a derived count or setting in src/components/App.tsx:40,100 and src/components/SettingsModal.tsx:65. Also adjust prompts that say "four agents."
 Unify styling approach: The app uses global CSS (index.css) while CSS modules exist but aren't imported (src/components/*.module.css, src/styles/global.css). Choose one approach (likely global, given index.html) and delete unused modules to reduce confusion.
 
-  
 
 ### [ 🔄 ] Task 38 - Accessibility Improvements
 Accessibility: Ensure buttons have clear labels (many do), and improve focus rings for keyboard navigation.
@@ -87,8 +97,6 @@ Accessibility: Ensure buttons have clear labels (many do), and improve focus rin
 ---
 
 ## ⏳ PENDING TASKS
-
-### 🚨 HIGH PRIORITY TASKS
 
 ### 🎨 User Interface & Experience
 
@@ -290,7 +298,17 @@ Add Playwright tests for: glass chat card present; message header/badge; input s
 
 ---
 
+## 🚨 HIGH PRIORITY TASKS
+These tasks must be completed asap.
+
+### [ 🚨 ] Task 77 - Fix Tavily and internet support
+Critical: Tavily API key is not working, and the internet support is not working.
+**Status**: Pending
+
+---
+
 ## 📊 Task Summary
+- **🚨 HIGH PRIORITY TASKS:** 1 task
 - **✅ Completed:** 12 tasks
 - **🔄 In Progress:** 1 task
 - **⚠️ Partially Implemented:** 4 tasks

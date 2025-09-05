@@ -71,34 +71,79 @@ export default defineConfig(({ mode }) => {
                 res.statusCode = 500; res.end(e?.message || 'error');
               }
             });
-            // Tools: Tavily search proxy (protect API key server-side)
-            server.middlewares.use('/api/tools/search', async (req, res) => {
+            // --- Tavily: server-side proxy (protects the API key) ---
+            server.middlewares.use('/api/tavily-test', async (req, res) => {
               try {
-                const chunks: any[] = [];
-                for await (const c of req as any) chunks.push(c);
-                const bodyStr = Buffer.concat(chunks as any).toString('utf-8') || '{}';
-                const data = JSON.parse(bodyStr || '{}');
-                const { query, search_depth = 'basic', include_raw_content = true, max_results = 3 } = data || {};
-                if (!query || typeof query !== 'string') { res.statusCode = 400; res.end('Missing query'); return; }
-                const tavilyKey = env.TAVILY_API_KEY || env.VITE_TAVILY_API_KEY || '';
-                if (!tavilyKey) { res.statusCode = 500; res.end('TAVILY_API_KEY not configured on server'); return; }
-                const r: any = await fetch('https://api.tavily.com/search', {
+                const TAVILY_API_KEY = process.env.TAVILY_API_KEY || env.TAVILY_API_KEY || '';
+                if (!TAVILY_API_KEY) {
+                  res.statusCode = 500;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ error: 'TAVILY_API_KEY not configured on server' }));
+                  return;
+                }
+                // Optional live ping to verify the key:
+                const r = await fetch('https://api.tavily.com/search', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    api_key: tavilyKey,
+                    api_key: TAVILY_API_KEY,
+                    query: 'ping',
+                    search_depth: 'basic',
+                    include_raw_content: false,
+                    max_results: 1,
+                  }),
+                });
+                if (!r.ok) {
+                  res.statusCode = r.status;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(await r.text());
+                  return;
+                }
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ message: 'Tavily API key is valid' }));
+              } catch (e) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: (e as any)?.message || 'error' }));
+              }
+            });
+
+            server.middlewares.use('/api/tools/search', async (req, res) => {
+              try {
+                if (req.method !== 'POST') { res.statusCode = 405; res.end('Method Not Allowed'); return; }
+                const body = await new Promise<string>((resolve) => {
+                  let data = ''; req.on('data', (c) => data += c); req.on('end', () => resolve(data));
+                });
+                const { query, search_depth = 'basic', include_raw_content = true, max_results = 3 } =
+                  JSON.parse(body || '{}') || {};
+                if (!query || typeof query !== 'string') { res.statusCode = 400; res.end('Missing query'); return; }
+                const TAVILY_API_KEY = process.env.TAVILY_API_KEY || env.TAVILY_API_KEY || '';
+                if (!TAVILY_API_KEY) {
+                  res.statusCode = 500;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ error: 'TAVILY_API_KEY not configured on server' }));
+                  return;
+                }
+                const r = await fetch('https://api.tavily.com/search', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    api_key: TAVILY_API_KEY,
                     query,
                     search_depth,
                     include_raw_content,
                     max_results,
                   }),
-                } as any);
+                });
                 const text = await r.text();
                 res.statusCode = r.status || 500;
                 res.setHeader('Content-Type', 'application/json');
                 res.end(text);
-              } catch (e: any) {
-                res.statusCode = 500; res.end(e?.message || 'error');
+              } catch (e) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: (e as any)?.message || 'error' }));
               }
             });
             server.middlewares.use('/api/generate', async (req, res) => {
@@ -159,131 +204,6 @@ export default defineConfig(({ mode }) => {
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
                     body: JSON.stringify({
                       model,
-                      messages: [
-                        ...(system ? [{ role: 'system', content: system }] : []),
-                        { role: 'user', content: prompt },
-                      ],
-                    }),
-                  } as any));
-                  if (!r.ok) { res.statusCode = r.status; res.end(await r.text()); return; }
-                  const json: any = await r.json();
-                  const text = json?.choices?.[0]?.message?.content || '';
-                  res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify({ text }));
-                  return;
-                }
-                if (provider === 'gemini') {
-                  const key = process.env.GEMINI_API_KEY || apiKey;
-                  if (!key) { res.statusCode = 500; res.end('GEMINI_API_KEY missing'); return; }
-                  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
-                  const r: any = await fetchWithRetry(() => fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                      ...(system ? { systemInstruction: { role: 'system', parts: [{ text: system }] } } : {}),
-                    }),
-                  } as any));
-                  if (!r.ok) { res.statusCode = r.status; res.end(await r.text()); return; }
-                  const json: any = await r.json();
-                  const text = json?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text || '').join('') || '';
-                  res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify({ text }));
-                  return;
-                }
-                res.statusCode = 400; res.end('Unsupported provider');
-              } catch (e: any) {
-                res.statusCode = 500; res.end(e?.message || 'error');
-              }
-            });
-            // Streaming generation endpoint (chunked text stream)
-            server.middlewares.use('/api/generateStream', async (req, res) => {
-              // Helper to end with error status/text
-              const endError = (code: number, msg: string) => { res.statusCode = code; res.end(msg); };
-              try {
-                const chunks: any[] = [];
-                for await (const c of req as any) chunks.push(c);
-                const body = Buffer.concat(chunks as any).toString('utf-8') || '{}';
-                const data = JSON.parse(body || '{}');
-                const { provider, model, prompt, system, apiKey } = data || {};
-                if (!provider || !model || !prompt) return endError(400, 'Missing provider/model/prompt');
-
-                // Prepare response as plain text chunked stream
-                res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-                res.setHeader('Cache-Control', 'no-cache');
-                try { (res as any).flushHeaders?.(); } catch {}
-
-                // Abort upstream if client disconnects or when our idle timeout fires
-                const upstreamController = new AbortController();
-                const abortUpstream = () => { try { upstreamController.abort(); } catch {} };
-                req.on('close', abortUpstream);
-                let wroteAnyChunk = false;
-                // Safety: if no bytes are written within 25s, abort upstream and end the response
-                const idleTimer = setTimeout(() => {
-                  if (!wroteAnyChunk && !upstreamController.signal.aborted) {
-                    try { res.write(''); } catch {}
-                    try { res.end(); } catch {}
-                    abortUpstream();
-                  }
-                }, 25000);
-
-                // Retry helper with exponential backoff + jitter; honors Retry-After when present
-                const parseRetryAfterMs = (h: string | null): number => {
-                  if (!h) return 0;
-                  const s = Number(h);
-                  if (!Number.isNaN(s)) return s * 1000;
-                  const when = Date.parse(h);
-                  if (!Number.isNaN(when)) return Math.max(0, when - Date.now());
-                  return 0;
-                };
-                const fetchWithRetry = async (make: () => Promise<any>, max = 3) => {
-                  let last: any;
-                  for (let attempt = 1; attempt <= max; attempt++) {
-                    if (upstreamController.signal.aborted) throw new Error('aborted');
-                    last = await make();
-                    if (last.status !== 429 && last.status !== 503) return last;
-                    const ra = parseRetryAfterMs(last.headers?.get?.('retry-after') || null);
-                    const base = Math.min(2000, 300 * Math.pow(2, attempt - 1));
-                    const waitMs = ra || (base + Math.floor(Math.random() * 200));
-                    await new Promise<void>((resolve, reject) => {
-                      const t = setTimeout(resolve, waitMs);
-                      upstreamController.signal.addEventListener('abort', () => { clearTimeout(t); reject(new Error('aborted')); }, { once: true });
-                    });
-                  }
-                  return last;
-                };
-
-                // Forward to interface-provided API when configured
-                if (INTERFACE_API_BASE) {
-                  try {
-                    const url = `${INTERFACE_API_BASE}${INTERFACE_STREAM_PATH}`;
-                    const r: any = await fetch(url, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ provider, model, prompt, system, apiKey }),
-                      signal: upstreamController.signal,
-                    } as any);
-                    if (!r.ok || !r.body) return endError(r.status || 500, await r.text().catch(()=>''));
-                    for await (const chunk of r.body as any) {
-                      wroteAnyChunk = true;
-                      try { res.write(Buffer.from(chunk)); } catch {}
-                    }
-                    try { res.end(); } catch {}
-                    clearTimeout(idleTimer);
-                    return;
-                  } catch (e: any) {
-                    return endError(502, e?.message || 'Upstream interface error');
-                  }
-                }
-
-                if (provider === 'groq') {
-                  const key = process.env.GROQ_API_KEY || apiKey;
-                  if (!key) return endError(500, 'GROQ_API_KEY missing');
-                  const r: any = await fetchWithRetry(() => fetch('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-                    body: JSON.stringify({
-                      model,
                       stream: true,
                       messages: [
                         ...(system ? [{ role: 'system', content: system }] : []),
@@ -316,7 +236,7 @@ export default defineConfig(({ mode }) => {
                       }
                     }
                   }
-                  try { res.end(); } catch {}
+                  try { res.end(); } catch {} // eslint-disable-line @typescript-eslint/no-explicit-any
                   clearTimeout(idleTimer);
                   return;
                 }
@@ -358,7 +278,7 @@ export default defineConfig(({ mode }) => {
                       }
                     }
                   }
-                  try { res.end(); } catch {}
+                  try { res.end(); } catch {} // eslint-disable-line @typescript-eslint/no-explicit-any
                   clearTimeout(idleTimer);
                   return;
                 }
